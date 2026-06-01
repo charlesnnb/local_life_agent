@@ -1,0 +1,312 @@
+{
+  "availability": [
+    {
+      "restaurant_id": "r_001",
+      "time": "16:00",
+      "available": true,
+      "remaining_tables": 3,
+      "queue_time_min": 5
+    },
+    {
+      "restaurant_id": "r_001",
+      "time": "16:30",
+      "available": true,
+      "remaining_tables": 4,
+      "queue_time_min": 0
+    },
+    {
+      "restaurant_id": "r_001",
+      "time": "17:00",
+      "available": true,
+      "remaining_tables": 2,
+      "queue_time_min": 10
+    },
+    {
+      "restaurant_id": "r_001",
+      "time": "17:30",
+      "available": true,
+      "remaining_tables": 3,
+      "queue_time_min": 5
+    },
+    {
+      "restaurant_id": "r_001",
+      "time": "18:00",
+      "available": false,
+      "remaining_tables": 0,
+      "queue_time_min": 25
+    },
+    {
+      "restaurant_id": "r_001",
+      "time": "18:30",
+      "available": false,
+      "remaining_tables": 0,
+      "queue_time_min": 35
+    },
+    {
+      "restaurant_id": "r_001",
+      "time": "19:00",
+      "available": true,
+      "remaining_tables": 1,
+      "queue_time_min": 15
+    },
+    {
+      "restaurant_id": "r_002",
+      "time": "17:00",
+      "available": true,
+      "remaining_tables": 5,
+      "queue_time_min": 0
+    },
+    {
+      "restaurant_id": "r_002",
+      "time": "17:30",
+      "available": true,
+      "remaining_tables": 4,
+      "queue_time_min": 0
+    },
+    {
+      "restaurant_id": "r_002",
+      "time": "18:00",
+      "available": true,
+      "remaining_tables": 3,
+      "queue_time_min": 5
+    },
+    {
+      "restaurant_id": "r_002",
+      "time": "18:30",
+      "available": true,
+      "remaining_tables": 2,
+      "queue_time_min": 10
+    },
+    {
+      "restaurant_id": "r_002",
+      "time": "19:00",
+      "available": true,
+      "remaining_tables": 1,
+      "queue_time_min": 15
+    },
+    {
+      "restaurant_id": "r_002",
+      "time": "19:30",
+      "available": false,
+      "remaining_tables": 0,
+      "queue_time_min": 30
+    },
+    {
+      "restaurant_id": "r_003",
+      "time": "16:00",
+      "available": true,
+      "remaining_tables": 5,
+      "queue_time_min": 0
+    },
+    {
+      "restaurant_id": "r_003",
+      "time": "16:30",
+      "available": true,
+      "remaining_tables": 4,
+      "queue_time_min": 0
+    },
+    {
+      "restaurant_id": "r_003",
+      "time": "17:00",
+      "available": true,
+      "remaining_tables": 3,
+      "queue_time_min": 0
+    },
+    {
+      "restaurant_id": "r_003",
+      "time": "17:30",
+      "available": true,
+      "remaining_tables": 2,
+      "queue_time_min": 5
+    },
+    {
+      "restaurant_id": "r_003",
+      "time": "18:00",
+      "available": true,
+      "remaining_tables": 1,
+      "queue_time_min": 10
+    },
+    {
+      "restaurant_id": "r_004",
+      "time": "11:30",
+      "available": true,
+      "remaining_tables": 3,
+      "queue_time_min": 0
+    },
+    {
+      "restaurant_id": "r_004",
+      "time": "12:00",
+      "available": false,
+      "remaining_tables": 0,
+      "queue_time_min": 20
+    },
+    {
+      "restaurant_id": "r_004",
+      "time": "12:30",
+      "available": false,
+      "remaining_tables": 0,
+      "queue_time_min": 30
+    },
+    {
+      "restaurant_id": "r_005",
+      "time": "17:30",
+      "available": true,
+      "remaining_tables": 6,
+      "queue_time_min": 0
+    },
+    {
+      "restaurant_id": "r_005",
+      "time": "18:00",
+      "available": true,
+      "remaining_tables": 4,
+      "queue_time_min": 5
+    },
+    {
+      "restaurant_id": "r_005",
+      "time": "18:30",
+      "available": true,
+      "remaining_tables": 2,
+      "queue_time_min": 15
+    },
+    {
+      "restaurant_id": "r_005",
+      "time": "19:00",
+      "available": false,
+      "remaining_tables": 0,
+      "queue_time_min": 35
+    },
+    {
+      "restaurant_id": "r_005",
+      "time": "19:30",
+      "available": false,
+      "remaining_tables": 0,
+      "queue_time_min": 45
+    },
+    {
+      "restaurant_id": "r_006",
+      "time": "17:00",
+      "available": true,
+      "remaining_tables": 4,
+      "queue_time_min": 0
+    },
+    {
+      "restaurant_id": "r_006",
+      "time": "18:00",
+      "available": true,
+      "remaining_tables": 3,
+      "queue_time_min": 0
+    },
+    {
+      "restaurant_id": "r_006",
+      "time": "18:30",
+      "available": true,
+      "remaining_tables": 2,
+      "queue_time_min": 5
+    },
+    {
+      "restaurant_id": "r_007",
+      "time": "16:00",
+      "available": true,
+      "remaining_tables": 6,
+      "queue_time_min": 0
+    },
+    {
+      "restaurant_id": "r_007",
+      "time": "16:30",
+      "available": true,
+      "remaining_tables": 5,
+      "queue_time_min": 0
+    },
+    {
+      "restaurant_id": "r_007",
+      "time": "17:00",
+      "available": true,
+      "remaining_tables": 4,
+      "queue_time_min": 0
+    },
+    {
+      "restaurant_id": "r_007",
+      "time": "17:30",
+      "available": true,
+      "remaining_tables": 3,
+      "queue_time_min": 0
+    },
+    {
+      "restaurant_id": "r_007",
+      "time": "18:00",
+      "available": true,
+      "remaining_tables": 2,
+      "queue_time_min": 5
+    },
+    {
+      "restaurant_id": "r_008",
+      "time": "18:00",
+      "available": true,
+      "remaining_tables": 4,
+      "queue_time_min": 0
+    },
+    {
+      "restaurant_id": "r_008",
+      "time": "19:00",
+      "available": true,
+      "remaining_tables": 3,
+      "queue_time_min": 5
+    },
+    {
+      "restaurant_id": "r_009",
+      "time": "16:00",
+      "available": true,
+      "remaining_tables": 3,
+      "queue_time_min": 0
+    },
+    {
+      "restaurant_id": "r_009",
+      "time": "16:30",
+      "available": true,
+      "remaining_tables": 4,
+      "queue_time_min": 0
+    },
+    {
+      "restaurant_id": "r_009",
+      "time": "17:00",
+      "available": true,
+      "remaining_tables": 2,
+      "queue_time_min": 5
+    },
+    {
+      "restaurant_id": "r_009",
+      "time": "17:30",
+      "available": true,
+      "remaining_tables": 1,
+      "queue_time_min": 10
+    },
+    {
+      "restaurant_id": "r_009",
+      "time": "18:00",
+      "available": false,
+      "remaining_tables": 0,
+      "queue_time_min": 20
+    },
+    {
+      "restaurant_id": "r_010",
+      "time": "16:00",
+      "available": true,
+      "remaining_tables": 4,
+      "queue_time_min": 0
+    },
+    {
+      "restaurant_id": "r_010",
+      "time": "17:00",
+      "available": true,
+      "remaining_tables": 3,
+      "queue_time_min": 0
+    },
+    {
+      "restaurant_id": "r_010",
+      "time": "18:00",
+      "available": true,
+      "remaining_tables": 2,
+      "queue_time_min": 5
+    }
+  ]
+}

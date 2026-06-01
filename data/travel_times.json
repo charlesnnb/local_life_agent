@@ -1,0 +1,355 @@
+{
+  "travel_times": [
+    {
+      "from": "home_u_001",
+      "to": "poi_001",
+      "distance_km": 3.2,
+      "taxi_time_min": 18,
+      "walk_time_min": 40,
+      "subway_time_min": 25,
+      "traffic_level": "medium"
+    },
+    {
+      "from": "home_u_001",
+      "to": "poi_002",
+      "distance_km": 4.5,
+      "taxi_time_min": 22,
+      "walk_time_min": 55,
+      "subway_time_min": 30,
+      "traffic_level": "medium"
+    },
+    {
+      "from": "home_u_001",
+      "to": "poi_003",
+      "distance_km": 5.8,
+      "taxi_time_min": 25,
+      "walk_time_min": 70,
+      "subway_time_min": 35,
+      "traffic_level": "medium"
+    },
+    {
+      "from": "home_u_001",
+      "to": "poi_004",
+      "distance_km": 2.1,
+      "taxi_time_min": 12,
+      "walk_time_min": 28,
+      "subway_time_min": 18,
+      "traffic_level": "low"
+    },
+    {
+      "from": "home_u_001",
+      "to": "poi_005",
+      "distance_km": 2.8,
+      "taxi_time_min": 15,
+      "walk_time_min": 35,
+      "subway_time_min": 22,
+      "traffic_level": "medium"
+    },
+    {
+      "from": "home_u_001",
+      "to": "poi_006",
+      "distance_km": 3.5,
+      "taxi_time_min": 20,
+      "walk_time_min": 45,
+      "subway_time_min": 28,
+      "traffic_level": "low"
+    },
+    {
+      "from": "home_u_001",
+      "to": "poi_007",
+      "distance_km": 6.5,
+      "taxi_time_min": 30,
+      "walk_time_min": 80,
+      "subway_time_min": 40,
+      "traffic_level": "high"
+    },
+    {
+      "from": "home_u_001",
+      "to": "poi_008",
+      "distance_km": 7.2,
+      "taxi_time_min": 32,
+      "walk_time_min": 90,
+      "subway_time_min": 42,
+      "traffic_level": "medium"
+    },
+    {
+      "from": "home_u_001",
+      "to": "poi_009",
+      "distance_km": 2.5,
+      "taxi_time_min": 14,
+      "walk_time_min": 32,
+      "subway_time_min": 20,
+      "traffic_level": "low"
+    },
+    {
+      "from": "home_u_001",
+      "to": "poi_010",
+      "distance_km": 3.0,
+      "taxi_time_min": 16,
+      "walk_time_min": 38,
+      "subway_time_min": 24,
+      "traffic_level": "medium"
+    },
+    {
+      "from": "poi_001",
+      "to": "r_001",
+      "distance_km": 1.8,
+      "taxi_time_min": 10,
+      "walk_time_min": 22,
+      "subway_time_min": 15,
+      "traffic_level": "low"
+    },
+    {
+      "from": "poi_001",
+      "to": "r_003",
+      "distance_km": 0.8,
+      "taxi_time_min": 5,
+      "walk_time_min": 10,
+      "subway_time_min": 8,
+      "traffic_level": "low"
+    },
+    {
+      "from": "poi_001",
+      "to": "r_007",
+      "distance_km": 1.5,
+      "taxi_time_min": 8,
+      "walk_time_min": 18,
+      "subway_time_min": 12,
+      "traffic_level": "low"
+    },
+    {
+      "from": "poi_001",
+      "to": "r_009",
+      "distance_km": 2.0,
+      "taxi_time_min": 10,
+      "walk_time_min": 25,
+      "subway_time_min": 15,
+      "traffic_level": "low"
+    },
+    {
+      "from": "poi_002",
+      "to": "r_004",
+      "distance_km": 2.2,
+      "taxi_time_min": 12,
+      "walk_time_min": 28,
+      "subway_time_min": 18,
+      "traffic_level": "medium"
+    },
+    {
+      "from": "poi_002",
+      "to": "r_005",
+      "distance_km": 1.5,
+      "taxi_time_min": 8,
+      "walk_time_min": 18,
+      "subway_time_min": 12,
+      "traffic_level": "low"
+    },
+    {
+      "from": "poi_002",
+      "to": "r_001",
+      "distance_km": 3.5,
+      "taxi_time_min": 16,
+      "walk_time_min": 42,
+      "subway_time_min": 25,
+      "traffic_level": "medium"
+    },
+    {
+      "from": "poi_003",
+      "to": "r_002",
+      "distance_km": 1.2,
+      "taxi_time_min": 6,
+      "walk_time_min": 15,
+      "subway_time_min": 10,
+      "traffic_level": "low"
+    },
+    {
+      "from": "poi_003",
+      "to": "r_006",
+      "distance_km": 5.5,
+      "taxi_time_min": 25,
+      "walk_time_min": 65,
+      "subway_time_min": 35,
+      "traffic_level": "high"
+    },
+    {
+      "from": "poi_004",
+      "to": "r_002",
+      "distance_km": 3.0,
+      "taxi_time_min": 15,
+      "walk_time_min": 38,
+      "subway_time_min": 22,
+      "traffic_level": "medium"
+    },
+    {
+      "from": "poi_005",
+      "to": "r_001",
+      "distance_km": 1.5,
+      "taxi_time_min": 8,
+      "walk_time_min": 18,
+      "subway_time_min": 12,
+      "traffic_level": "low"
+    },
+    {
+      "from": "poi_005",
+      "to": "r_003",
+      "distance_km": 1.0,
+      "taxi_time_min": 5,
+      "walk_time_min": 12,
+      "subway_time_min": 8,
+      "traffic_level": "low"
+    },
+    {
+      "from": "poi_005",
+      "to": "r_007",
+      "distance_km": 0.5,
+      "taxi_time_min": 3,
+      "walk_time_min": 6,
+      "subway_time_min": 5,
+      "traffic_level": "low"
+    },
+    {
+      "from": "poi_006",
+      "to": "r_005",
+      "distance_km": 2.0,
+      "taxi_time_min": 10,
+      "walk_time_min": 25,
+      "subway_time_min": 16,
+      "traffic_level": "medium"
+    },
+    {
+      "from": "poi_006",
+      "to": "r_008",
+      "distance_km": 1.5,
+      "taxi_time_min": 8,
+      "walk_time_min": 18,
+      "subway_time_min": 12,
+      "traffic_level": "low"
+    },
+    {
+      "from": "poi_006",
+      "to": "r_002",
+      "distance_km": 3.5,
+      "taxi_time_min": 16,
+      "walk_time_min": 42,
+      "subway_time_min": 25,
+      "traffic_level": "medium"
+    },
+    {
+      "from": "poi_009",
+      "to": "r_002",
+      "distance_km": 2.0,
+      "taxi_time_min": 10,
+      "walk_time_min": 25,
+      "subway_time_min": 15,
+      "traffic_level": "low"
+    },
+    {
+      "from": "poi_009",
+      "to": "r_006",
+      "distance_km": 3.8,
+      "taxi_time_min": 18,
+      "walk_time_min": 48,
+      "subway_time_min": 28,
+      "traffic_level": "medium"
+    },
+    {
+      "from": "poi_010",
+      "to": "r_001",
+      "distance_km": 2.0,
+      "taxi_time_min": 10,
+      "walk_time_min": 25,
+      "subway_time_min": 15,
+      "traffic_level": "low"
+    },
+    {
+      "from": "r_001",
+      "to": "home_u_001",
+      "distance_km": 3.0,
+      "taxi_time_min": 16,
+      "walk_time_min": 38,
+      "subway_time_min": 22,
+      "traffic_level": "medium"
+    },
+    {
+      "from": "r_002",
+      "to": "home_u_001",
+      "distance_km": 5.5,
+      "taxi_time_min": 24,
+      "walk_time_min": 68,
+      "subway_time_min": 35,
+      "traffic_level": "medium"
+    },
+    {
+      "from": "r_003",
+      "to": "home_u_001",
+      "distance_km": 2.8,
+      "taxi_time_min": 15,
+      "walk_time_min": 35,
+      "subway_time_min": 22,
+      "traffic_level": "medium"
+    },
+    {
+      "from": "r_005",
+      "to": "home_u_001",
+      "distance_km": 4.0,
+      "taxi_time_min": 20,
+      "walk_time_min": 50,
+      "subway_time_min": 30,
+      "traffic_level": "medium"
+    },
+    {
+      "from": "r_007",
+      "to": "home_u_001",
+      "distance_km": 2.5,
+      "taxi_time_min": 14,
+      "walk_time_min": 32,
+      "subway_time_min": 20,
+      "traffic_level": "low"
+    },
+    {
+      "from": "r_009",
+      "to": "home_u_001",
+      "distance_km": 3.2,
+      "taxi_time_min": 18,
+      "walk_time_min": 40,
+      "subway_time_min": 25,
+      "traffic_level": "medium"
+    },
+    {
+      "from": "home_u_001",
+      "to": "r_001",
+      "distance_km": 3.0,
+      "taxi_time_min": 16,
+      "walk_time_min": 38,
+      "subway_time_min": 22,
+      "traffic_level": "medium"
+    },
+    {
+      "from": "home_u_001",
+      "to": "r_002",
+      "distance_km": 5.5,
+      "taxi_time_min": 24,
+      "walk_time_min": 68,
+      "subway_time_min": 35,
+      "traffic_level": "medium"
+    },
+    {
+      "from": "poi_001",
+      "to": "home_u_001",
+      "distance_km": 3.2,
+      "taxi_time_min": 18,
+      "walk_time_min": 40,
+      "subway_time_min": 25,
+      "traffic_level": "medium"
+    },
+    {
+      "from": "poi_003",
+      "to": "home_u_001",
+      "distance_km": 5.8,
+      "taxi_time_min": 25,
+      "walk_time_min": 70,
+      "subway_time_min": 35,
+      "traffic_level": "medium"
+    }
+  ]
+}

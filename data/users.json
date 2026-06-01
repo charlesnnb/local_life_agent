@@ -1,0 +1,32 @@
+{
+  "users": [
+    {
+      "user_id": "u_001",
+      "name": "小明",
+      "home_location": {
+        "district": "徐汇区",
+        "lat": 31.1886,
+        "lng": 121.4365,
+        "address": "上海市徐汇区漕溪北路1000号"
+      },
+      "default_budget": 500,
+      "preferred_transport": "taxi",
+      "max_distance_km": 8,
+      "phone": "13800001001"
+    },
+    {
+      "user_id": "u_002",
+      "name": "小红",
+      "home_location": {
+        "district": "静安区",
+        "lat": 31.2235,
+        "lng": 121.4557,
+        "address": "上海市静安区南京西路1500号"
+      },
+      "default_budget": 600,
+      "preferred_transport": "taxi",
+      "max_distance_km": 10,
+      "phone": "13800001002"
+    }
+  ]
+}

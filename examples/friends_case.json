@@ -1,0 +1,22 @@
+{
+  "user_id": "u_001",
+  "query": "今天下午我们 4 个人，2 男 2 女，想出去玩几个小时，顺便吃饭，别太远。",
+  "expected_scene": "friends",
+  "expected_party_size": 4,
+  "expected_gender_mix": {
+    "male": 2,
+    "female": 2
+  },
+  "expected_constraints": {
+    "duration_4_6_hours": true,
+    "max_distance_10km": true,
+    "includes_activity_and_meal": true,
+    "prefers_social_and_photo_friendly": true
+  },
+  "expected_actions": [
+    "create_ticket_order",
+    "create_restaurant_reservation",
+    "create_ride_order",
+    "send_plan_message"
+  ]
+}

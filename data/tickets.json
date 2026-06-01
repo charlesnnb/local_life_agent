@@ -1,0 +1,67 @@
+{
+  "tickets": [
+    {
+      "poi_id": "poi_001",
+      "date": "2026-06-01",
+      "remaining": 50,
+      "adult_price": 128,
+      "child_price": 68,
+      "need_booking": false,
+      "time_slots": ["10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00"]
+    },
+    {
+      "poi_id": "poi_002",
+      "date": "2026-06-01",
+      "remaining": 30,
+      "adult_price": 88,
+      "child_price": 48,
+      "need_booking": false,
+      "time_slots": ["10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00"]
+    },
+    {
+      "poi_id": "poi_003",
+      "date": "2026-06-01",
+      "remaining": 20,
+      "adult_price": 60,
+      "child_price": 30,
+      "need_booking": true,
+      "time_slots": ["10:00", "11:30", "13:00", "14:30", "16:00"]
+    },
+    {
+      "poi_id": "poi_005",
+      "date": "2026-06-01",
+      "remaining": 999,
+      "adult_price": 0,
+      "child_price": 0,
+      "need_booking": false,
+      "time_slots": ["10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"]
+    },
+    {
+      "poi_id": "poi_008",
+      "date": "2026-06-01",
+      "remaining": 15,
+      "adult_price": 98,
+      "child_price": 58,
+      "need_booking": true,
+      "time_slots": ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00"]
+    },
+    {
+      "poi_id": "poi_010",
+      "date": "2026-06-01",
+      "remaining": 8,
+      "adult_price": 158,
+      "child_price": 98,
+      "need_booking": true,
+      "time_slots": ["10:00", "11:30", "13:00", "14:30", "16:00"]
+    },
+    {
+      "poi_id": "poi_001",
+      "date": "2026-06-01",
+      "remaining": 50,
+      "adult_price": 128,
+      "child_price": 68,
+      "need_booking": false,
+      "time_slots": ["10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00"]
+    }
+  ]
+}

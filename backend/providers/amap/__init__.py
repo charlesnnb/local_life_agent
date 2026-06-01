@@ -1,0 +1,1 @@
+"""AMap provider package."""

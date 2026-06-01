@@ -1,0 +1,20 @@
+{
+  "user_id": "u_001",
+  "query": "今天下午是空的，想和老婆孩子出去玩几个小时，别离家太远，帮我安排一下。",
+  "expected_scene": "family",
+  "expected_party_size": 3,
+  "expected_child_age": 5,
+  "expected_constraints": {
+    "duration_4_6_hours": true,
+    "max_distance_8km": true,
+    "includes_activity_and_meal": true,
+    "prefers_low_fat_and_kids_meal": true
+  },
+  "expected_actions": [
+    "create_ticket_order",
+    "create_restaurant_reservation",
+    "create_flower_or_cake_order",
+    "create_ride_order",
+    "send_plan_message"
+  ]
+}
