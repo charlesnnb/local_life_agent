@@ -12,13 +12,22 @@ interface Props {
 const PHASE_ICONS: Record<string, string> = {
   init: '🚀',
   intent_parsing: '🔍',
+  profile_merge: '👤',
   constraint_extraction: '📋',
   candidate_retrieval: '🔎',
-  fallback: '⚠️',
+  weather: '🌤',
+  routes: '🚗',
+  ranking: '📊',
+  plan_building: '📅',
   feasibility_check: '✅',
-  itinerary_construction: '📅',
+  feasibility_fallback: '🔄',
+  action_planning: '📝',
+  share_message: '💬',
   execution: '⚡',
+  explanation: '📖',
   response: '📤',
+  fallback: '⚠️',
+  itinerary_construction: '📅',
 };
 
 const AgentTracePanel: React.FC<Props> = ({ trace }) => {

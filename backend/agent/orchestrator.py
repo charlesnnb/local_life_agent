@@ -1,4 +1,12 @@
-"""Main Agent Orchestrator: wires together the full planning pipeline."""
+"""Legacy V1 mock pipeline — preserved for reference and test reuse.
+
+The production demo uses main_agent.py / the current LocalLifeAgent pipeline
+(orchestrator_v2.py + stream_orchestrator.py).
+
+This V1 pipeline is a simpler mock-only flow without provider abstraction,
+real API integration, streaming, or the full 13-stage pipeline. It is NOT
+used by the primary /api/plan endpoint.
+"""
 
 from backend.data_loader import load_all, get_user, get_family_profile, get_pois, get_restaurants
 from backend.agent.parser import parse_intent, extract_constraints

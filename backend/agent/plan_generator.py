@@ -19,7 +19,7 @@ def build_plan(
 
     Returns a dict with the complete plan structure.
     """
-    # Top candidates (highest scored)
+    # Top candidates (highest scored) — safe access with empty-list guards
     top_poi = poi_rankings[0] if poi_rankings else None
     top_restaurant = restaurant_rankings[0] if restaurant_rankings else None
 

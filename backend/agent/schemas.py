@@ -4,9 +4,19 @@ from pydantic import BaseModel
 from typing import Optional
 
 
+class UserLocation(BaseModel):
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    accuracy: Optional[float] = None
+    source: Optional[str] = None  # "browser_geolocation" | "manual" | "profile_default"
+    address: Optional[str] = None
+
+
 class PlanRequest(BaseModel):
     user_id: str
     query: str
+    location: Optional[UserLocation] = None
+    demo_scenario: Optional[str] = "normal"
 
 
 class IntentResult(BaseModel):

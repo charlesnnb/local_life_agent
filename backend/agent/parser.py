@@ -25,7 +25,7 @@ def parse_intent(query: str) -> dict:
     elif has_friends or has_gender_mix or has_party or has_we_party:
         scene = "friends"
     else:
-        scene = "family"
+        scene = "solo"  # default to solo, not family — avoids wrong profile merge
 
     return {
         "intent": "short_activity_planning",

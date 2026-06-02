@@ -1,9 +1,10 @@
 import React from 'react';
 
 interface ToolCall {
-  tool: string;
-  input: any;
-  output: any;
+  tool_name?: string;
+  tool?: string;
+  input?: any;
+  output?: any;
   success: boolean;
   message: string;
 }
@@ -30,7 +31,7 @@ const ToolCallTimeline: React.FC<Props> = ({ toolCalls }) => {
             </span>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-gray-800">{tc.tool}</span>
+                <span className="text-sm font-medium text-gray-800">{tc.tool_name || tc.tool}</span>
                 <span className={`badge ${tc.success ? 'badge-green' : 'badge-red'}`}>
                   {tc.success ? '成功' : '失败'}
                 </span>
