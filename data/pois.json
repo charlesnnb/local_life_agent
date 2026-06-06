@@ -15,8 +15,6 @@
       "avg_duration_min": 100,
       "rating": 4.7,
       "price": 128,
-      "requires_ticket": true,
-      "has_parking": true,
       "indoor": true
     },
     {
@@ -34,8 +32,6 @@
       "avg_duration_min": 90,
       "rating": 4.5,
       "price": 88,
-      "requires_ticket": true,
-      "has_parking": true,
       "indoor": true
     },
     {
@@ -53,8 +49,6 @@
       "avg_duration_min": 90,
       "rating": 4.6,
       "price": 60,
-      "requires_ticket": true,
-      "has_parking": true,
       "indoor": true
     },
     {
@@ -72,8 +66,6 @@
       "avg_duration_min": 60,
       "rating": 4.4,
       "price": 0,
-      "requires_ticket": false,
-      "has_parking": false,
       "indoor": false
     },
     {
@@ -91,8 +83,6 @@
       "avg_duration_min": 60,
       "rating": 4.3,
       "price": 0,
-      "requires_ticket": false,
-      "has_parking": true,
       "indoor": true
     },
     {
@@ -110,8 +100,6 @@
       "avg_duration_min": 120,
       "rating": 4.4,
       "price": 45,
-      "requires_ticket": false,
-      "has_parking": false,
       "indoor": true
     },
     {
@@ -129,8 +117,6 @@
       "avg_duration_min": 60,
       "rating": 4.2,
       "price": 0,
-      "requires_ticket": false,
-      "has_parking": false,
       "indoor": false
     },
     {
@@ -148,8 +134,6 @@
       "avg_duration_min": 80,
       "rating": 4.6,
       "price": 98,
-      "requires_ticket": true,
-      "has_parking": true,
       "indoor": true
     },
     {
@@ -167,8 +151,6 @@
       "avg_duration_min": 50,
       "rating": 4.5,
       "price": 0,
-      "requires_ticket": false,
-      "has_parking": false,
       "indoor": false
     },
     {
@@ -186,8 +168,74 @@
       "avg_duration_min": 90,
       "rating": 4.5,
       "price": 158,
-      "requires_ticket": true,
-      "has_parking": true,
+      "indoor": true
+    },
+    {
+      "poi_id": "poi_011",
+      "name": "长风公园钓鱼池",
+      "type": "钓鱼",
+      "district": "普陀区",
+      "lat": 31.2244,
+      "lng": 121.3957,
+      "tags": ["outdoor", "fishing", "relaxing"],
+      "suitable_scenes": ["solo", "friends"],
+      "age_range": [12, 99],
+      "open_time": "08:00",
+      "close_time": "18:00",
+      "avg_duration_min": 120,
+      "rating": 4.4,
+      "price": 80,
+      "indoor": false
+    },
+    {
+      "poi_id": "poi_012",
+      "name": "梧桐里清吧",
+      "type": "清吧",
+      "district": "徐汇区",
+      "lat": 31.2110,
+      "lng": 121.4380,
+      "tags": ["indoor", "bar", "quiet", "night", "relaxing"],
+      "suitable_scenes": ["solo", "friends", "couple"],
+      "age_range": [18, 99],
+      "open_time": "18:00",
+      "close_time": "02:00",
+      "avg_duration_min": 120,
+      "rating": 4.5,
+      "price": 120,
+      "indoor": true
+    },
+    {
+      "poi_id": "poi_013",
+      "name": "跃动空间蹦床馆",
+      "type": "蹦床馆",
+      "district": "徐汇区",
+      "lat": 31.1940,
+      "lng": 121.4310,
+      "tags": ["indoor", "trampoline", "sports", "relaxing"],
+      "suitable_scenes": ["solo", "friends", "family"],
+      "age_range": [6, 99],
+      "open_time": "10:00",
+      "close_time": "21:00",
+      "avg_duration_min": 90,
+      "rating": 4.6,
+      "price": 108,
+      "indoor": true
+    },
+    {
+      "poi_id": "poi_014",
+      "name": "云境五星级酒店酒廊",
+      "type": "五星级酒店",
+      "district": "静安区",
+      "lat": 31.2180,
+      "lng": 121.4490,
+      "tags": ["indoor", "hotel", "hotel_lounge", "quiet", "relaxing"],
+      "suitable_scenes": ["solo", "friends", "couple", "family"],
+      "age_range": [0, 99],
+      "open_time": "10:00",
+      "close_time": "23:30",
+      "avg_duration_min": 120,
+      "rating": 4.8,
+      "price": 260,
       "indoor": true
     }
   ]

@@ -1,0 +1,1 @@
+"""Local Life Agent MVP."""

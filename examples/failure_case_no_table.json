@@ -1,9 +1,0 @@
-{
-  "scenario": "restaurant_no_table",
-  "description": "模拟餐厅高峰时段无位，触发 fallback 换时间或换餐厅",
-  "user_id": "u_001",
-  "query": "今天晚上 6 点和老婆孩子出去吃饭，帮我安排。",
-  "triggered_fallback": true,
-  "fallback_reason": "餐厅 18:00 时段无空位",
-  "resolution": "自动切换到 17:30 时段或推荐同类型可用餐厅"
-}

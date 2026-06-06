@@ -1,337 +1,287 @@
-const API_BASE = 'http://localhost:8000';
+const API_BASE = '';
 
-export interface ProviderStatus {
-  llm: string;
-  poi: string;
-  route: string;
-  weather: string;
-  booking: string;
-  execution?: string;
+export interface UserTask {
+  task_id: string;
+  time_window: string;
+  task_type:
+    | 'food_delivery'
+    | 'poi_search'
+    | 'restaurant_search'
+    | 'hotel_search'
+    | 'food_order'
+    | 'activity_search'
+    | 'restaurant_visit'
+    | 'bar_visit'
+    | 'route_stop'
+    | 'message'
+    | 'unknown';
+  target: string | null;
+  search_query: string | null;
+  tool_name: string;
+  route_needed: boolean;
+  description: string;
+  priority: number;
 }
 
-export interface ProviderStatusV2 {
-  app_mode: string;
-  providers: ProviderStatus;
-  safe_for_live_demo: boolean;
-  execution_always_mock: boolean;
-  modes_available: Record<string, string>;
+export interface TaskPlan {
+  scene: string;
+  mood: string | null;
+  time_windows: string[];
+  tasks: UserTask[];
+  constraints: Record<string, unknown>;
 }
 
-export interface UserLocation {
-  lat?: number | null;
-  lng?: number | null;
-  accuracy?: number | null;
-  source?: string;
-  address?: string | null;
-}
-
-export interface ParsedIntent {
+export interface UserIntent {
+  raw_query: string;
+  scene: string;
+  time_window: string;
+  time_windows: string[];
+  tasks: UserTask[];
+  duration_hours: number[];
+  companions: string[];
+  party_size: number;
+  child_age: number | null;
+  gender_mix: { male: number; female: number } | null;
+  distance_preference: 'nearby' | 'normal' | 'flexible';
+  activity_preferences: string[];
+  diet_preferences: string[];
+  budget_preference: 'not_expensive' | 'normal' | 'flexible';
+  avoid: string[];
+  weather_constraint: 'rain' | 'snow' | 'hot' | 'cold' | null;
   city: string | null;
-  area: string | null;
-  date_or_time: string | null;
-  party_size: number | null;
-  budget_per_person: number | null;
-  scene: string | null;
-  cuisine_preferences: string[] | null;
-  dislikes_or_restrictions: string[] | null;
-  activity_after_meal: string | null;
-  transport_preference: string | null;
-  indoor_preference: boolean | null;
-  raw_user_input: string;
-  confidence: number;
-  missing_fields: string[];
 }
 
-export interface ScoreBreakdown {
-  candidate_name: string;
-  candidate_id: string;
-  distance_score: number;
-  route_time_score: number;
-  budget_score: number;
-  scene_score: number;
-  weather_score: number;
-  preference_score: number;
-  unknown_penalty: number;
-  unknown_fields: string[];
-  weights: Record<string, number>;
-  final_score: number;
+export interface UserPreference {
+  activity_types: string[];
+  max_travel_minutes: 15 | 30 | 45;
+  dining_preferences: string[];
+  activity_intensity: 'light' | 'medium' | 'high';
+  budget_level: 'low' | 'medium' | 'high';
+  prefer_indoor: boolean;
+  prefer_low_wait: boolean;
 }
 
-export interface Candidate {
-  id: string;
-  name: string;
-  type: string;
-  address: string;
-  longitude: number | null;
-  latitude: number | null;
-  distance_m: number | null;
-  tel: string | null;
-  rating: string | number;
-  avg_price: string | number;
-  open_time: string;
-  close_time: string;
-  indoor: string | boolean;
-  suitable_scenes: string | string[];
-  tags: string | string[];
-  source: string;
+export interface PreferenceWeights {
+  distance_weight: number;
+  activity_match_weight: number;
+  child_friendly_weight: number;
+  diet_match_weight: number;
+  popularity_weight: number;
+  budget_weight: number;
+  indoor_weight: number;
+  low_wait_weight: number;
 }
 
-export interface WeatherData {
-  city: string;
-  day_weather: string;
-  day_temp: string;
-  night_temp: string;
-  source: string;
+export interface PreferenceProfile {
+  preference: UserPreference;
+  weights: PreferenceWeights;
 }
 
-export interface ToolCall {
-  tool_name?: string;
-  tool?: string;
-  input?: Record<string, any>;
-  success: boolean;
-  output?: any;
-  message: string;
-}
-
-export interface CompletedAction {
-  type: string;
-  status: string;
-  title: string;
-  detail: string;
-  id?: string;
-  result?: any;
-}
-
-export interface FallbackAction {
-  type?: string;
-  reason: string;
-  action?: string;
-  result?: string;
-  suggestion?: string;
-}
-
-export interface FeasibilityCheck {
-  check: string;
-  result: string;
-  detail: string;
-}
-
-export interface FeasibilityResult {
-  feasible: boolean;
-  reasons: string[];
-  warnings: string[];
-  fallback_used: string[];
-  checks: FeasibilityCheck[];
-  suggested_fallback?: { type: string; reason: string } | null;
-}
-
-export interface ActionPlanItem {
-  type: string;
-  tool: string;
-  required: boolean;
-  params: Record<string, any>;
-}
-
-export interface DebugInfo {
-  feasibility: FeasibilityResult;
-  action_plan: ActionPlanItem[];
-  needs_ticket: boolean;
-  demo_scenario?: string;
-}
-
-export interface OriginLocation {
-  lat?: number;
-  lng?: number;
-  address?: string;
-  district?: string;
-  source?: string;
-  accuracy?: number | null;
-  confidence?: number;
-}
-
-export interface PlanResponseV2 {
-  status: string;
-  version: string;
-  scene: string | null;
-  summary: string;
-  user_input: string;
-  constraints: Record<string, any>;
-  origin_location: OriginLocation;
-  parsed_intent: ParsedIntent;
-  provider_status: ProviderStatus;
-  candidates: {
-    pois: Candidate[];
-    restaurants: Candidate[];
+export interface PreferenceSetupData extends PreferenceProfile {
+  options: {
+    activity_types: string[];
+    max_travel_minutes: number[];
+    dining_preferences: string[];
+    activity_intensity: string[];
+    budget_level: string[];
   };
-  rankings: {
-    poi_rankings: ScoreBreakdown[];
-    restaurant_rankings: ScoreBreakdown[];
+}
+
+export interface PlanStep {
+  time: string;
+  action: string;
+  description: string;
+  place: string | null;
+  reason: string | null;
+  source: string | null;
+}
+
+export interface ActionResult {
+  type: 'reservation' | 'send_message' | 'food_order';
+  target: string;
+  status: 'mock_success' | 'mock_failed';
+  message: string | null;
+  details: Record<string, unknown>;
+}
+
+export interface RoutePlan {
+  origin: {
+    name: string;
+    lat: number;
+    lng: number;
   };
-  itinerary: Array<{
-    time: string;
-    type: string;
-    title: string;
-    description: string;
-    location_id: string | null;
+  stops: Array<{
+    type: 'activity' | 'restaurant' | 'bar' | 'hotel';
+    name: string;
+    lat: number;
+    lng: number;
+    estimated_travel_minutes: number;
+    distance_km: number;
+    source: string;
   }>;
-  top_picks: {
-    poi: Candidate | null;
-    restaurant: Candidate | null;
-    poi_score: ScoreBreakdown | null;
-    restaurant_score: ScoreBreakdown | null;
+  return_to_origin_minutes: number;
+  total_travel_minutes: number;
+  transport: string;
+  source: string;
+  polyline: number[][];
+}
+
+export interface TimelineItem {
+  time: string;
+  type:
+    | 'departure'
+    | 'activity'
+    | 'transfer'
+    | 'restaurant'
+    | 'bar'
+    | 'hotel'
+    | 'food_order'
+    | 'delivery'
+    | 'break'
+    | 'return'
+    | 'arrival';
+  title: string;
+  description: string;
+}
+
+export interface TimelineData {
+  items: TimelineItem[];
+  total_duration_minutes: number;
+}
+
+export interface PlanResponse {
+  user_intent: UserIntent;
+  task_plan: TaskPlan | null;
+  plan: {
+    summary: string;
+    steps: PlanStep[];
+    reasons: string[];
   };
-  weather: WeatherData | null;
-  planning_trace: Array<{ phase: string; message: string }>;
-  tool_calls: ToolCall[];
-  completed_actions: CompletedAction[];
-  fallback_actions: FallbackAction[];
-  share_message: string;
-  explanation: string;
-  plan_score: number;
-  total_time_min: number;
-  debug?: DebugInfo;
+  route: RoutePlan;
+  timeline: TimelineData;
+  actions: ActionResult[];
+  preference_explanation: string[];
+  decision_explanation: {
+    selected_reasons: string[];
+    rejected_reasons: Array<{ name: string; reason: string }>;
+    preference_explanation: string[];
+    public_reasoning: string;
+  } | null;
+  composition: {
+    summary: string;
+    timeline_explanation: string;
+    share_message: string;
+  } | null;
+  planning_warnings: string[];
+  natural_language: string;
 }
 
-export interface SSEEvent {
-  type: 'trace' | 'tool_call' | 'fallback' | 'partial_itinerary' | 'final' | 'error';
-  phase?: string;
-  status?: string;
-  message?: string;
-  tool_name?: string;
-  input?: any;
-  output?: any;
-  reason?: string;
-  action?: string;
-  result?: string;
-  data?: PlanResponseV2 | any;
+export interface PlanEvent {
+  type: 'progress' | 'result' | 'error';
+  stage: string;
+  message: string;
+  data: Record<string, unknown>;
+  source: 'system' | 'deepseek' | 'amap' | 'mock';
 }
 
-// ── Primary API: plan (V2 pipeline, current main flow) ──────────────
-
-export async function planQuery(
-  userId: string,
-  query: string,
-  location?: UserLocation | null,
-  demoScenario?: string,
-): Promise<PlanResponseV2> {
-  const body: any = { user_id: userId, query };
-  if (location) body.location = location;
-  if (demoScenario && demoScenario !== 'normal') body.demo_scenario = demoScenario;
-  const res = await fetch(`${API_BASE}/api/plan`, {
+export async function createPlan(query: string): Promise<PlanResponse> {
+  const response = await fetch(`${API_BASE}/api/plan`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ query }),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(err.detail || err.error || `HTTP ${res.status}`);
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.detail || `HTTP ${response.status}`);
   }
-  return res.json();
+  return response.json();
 }
 
-// ── Primary streaming API ─────────────────────────────────────────
+export async function getDefaultPreferences(): Promise<PreferenceSetupData> {
+  return requestJson('/api/preferences/default');
+}
 
-export function planQueryStream(
-  userId: string,
-  query: string,
-  onEvent: (event: SSEEvent) => void,
-  onComplete: () => void,
-  onError: (error: string) => void,
-  location?: UserLocation | null,
-  demoScenario?: string,
-): AbortController {
-  const controller = new AbortController();
-  const body: any = { user_id: userId, query };
-  if (location) body.location = location;
-  if (demoScenario && demoScenario !== 'normal') body.demo_scenario = demoScenario;
+export async function getCurrentPreferences(): Promise<PreferenceProfile> {
+  return requestJson('/api/preferences/current');
+}
 
-  fetch(`${API_BASE}/api/plan/stream`, {
+export async function savePreferences(
+  preference: UserPreference,
+): Promise<PreferenceProfile> {
+  return requestJson('/api/preferences', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    signal: controller.signal,
-  }).then(async (response) => {
-    if (!response.ok) {
-      onError(`HTTP ${response.status}`);
-      return;
-    }
-    const reader = response.body?.getReader();
-    if (!reader) { onError('No response body'); return; }
-    const decoder = new TextDecoder();
-    let buffer = '';
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-      let eventType = '';
-      for (const line of lines) {
-        if (line.startsWith('event: ')) {
-          eventType = line.slice(7).trim();
-        } else if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.slice(6));
-            onEvent({ type: eventType as any, ...data });
-          } catch {}
-          eventType = '';
-        }
-      }
-    }
-    onComplete();
-  }).catch((err) => {
-    if (err.name !== 'AbortError') onError(err.message);
+    body: JSON.stringify(preference),
   });
-
-  return controller;
 }
 
-// ── Backward-compatible aliases (kept for existing consumers) ──────
-
-export async function planQueryV2(
-  userId: string,
+export async function createPlanStream(
   query: string,
-  location?: UserLocation | null,
-  demoScenario?: string,
-): Promise<PlanResponseV2> {
-  return planQuery(userId, query, location, demoScenario);
-}
-
-export function planQueryV2Stream(
-  userId: string,
-  query: string,
-  onEvent: (event: SSEEvent) => void,
-  onComplete: () => void,
-  onError: (error: string) => void,
-  location?: UserLocation | null,
-  demoScenario?: string,
-): AbortController {
-  return planQueryStream(userId, query, onEvent, onComplete, onError, location, demoScenario);
-}
-
-// ── Provider status ─────────────────────────────────────────────────
-
-export async function getProviderStatus(): Promise<{ app_mode: string; provider_status: ProviderStatus }> {
-  const res = await fetch(`${API_BASE}/api/provider-status`);
-  return res.json();
-}
-
-export async function getProviderStatusV2(): Promise<ProviderStatusV2> {
-  const res = await fetch(`${API_BASE}/api/provider/status`);
-  return res.json();
-}
-
-export async function switchAppMode(mode: string): Promise<{
-  status: string; app_mode: string; providers: ProviderStatus; safe_for_live_demo: boolean;
-}> {
-  const res = await fetch(`${API_BASE}/api/mode/switch`, {
+  onEvent: (event: PlanEvent) => void,
+): Promise<PlanResponse> {
+  const response = await fetch(`${API_BASE}/api/plan/stream`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ app_mode: mode }),
+    headers: {
+      Accept: 'text/event-stream',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query }),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Unknown' }));
-    throw new Error(err.detail || err.error || `HTTP ${res.status}`);
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
   }
-  return res.json();
+  if (!response.body) {
+    throw new Error('浏览器不支持流式响应');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let result: PlanResponse | null = null;
+
+  const consumeBlock = (block: string) => {
+    const payload = block
+      .split(/\r?\n/)
+      .filter(line => line.startsWith('data:'))
+      .map(line => line.slice(5).trimStart())
+      .join('\n');
+    if (!payload) return;
+
+    const event = JSON.parse(payload) as PlanEvent;
+    onEvent(event);
+    if (event.type === 'error') {
+      throw new Error(event.message || '流式规划失败');
+    }
+    if (event.type === 'result') {
+      result = event.data as unknown as PlanResponse;
+    }
+  };
+
+  while (true) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value, { stream: !done });
+    const blocks = buffer.split(/\r?\n\r?\n/);
+    buffer = blocks.pop() ?? '';
+    blocks.forEach(consumeBlock);
+    if (done) break;
+  }
+  if (buffer.trim()) {
+    consumeBlock(buffer);
+  }
+  if (!result) {
+    throw new Error('流式响应未返回最终方案');
+  }
+  return result;
+}
+
+async function requestJson<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, init);
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.detail || `HTTP ${response.status}`);
+  }
+  return response.json();
 }

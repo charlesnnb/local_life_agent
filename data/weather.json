@@ -1,0 +1,18 @@
+{
+  "weather": [
+    {
+      "city": "上海",
+      "condition": "多云",
+      "temperature_c": 26,
+      "outdoor_friendly": true,
+      "source": "mock"
+    },
+    {
+      "city": "北京",
+      "condition": "晴",
+      "temperature_c": 25,
+      "outdoor_friendly": true,
+      "source": "mock"
+    }
+  ]
+}

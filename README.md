@@ -1,305 +1,397 @@
-# Local Life Agent
+# Local Life Agent MVP
 
-一句话安排你的本地休闲活动 — 输入"下午带孩子出去玩，顺便吃个饭"，Agent 自动帮你规划完整方案。
+一句话生成一个可直接执行的本地短时活动方案，并模拟完成餐厅预约和计划消息发送。
 
-## 快速开始（5 分钟）
+## 本次重构总结
 
-### 1. 安装依赖
+这个项目最初同时存在 V1/V2、多个 orchestrator、复杂 trace、订单/门票/打车等尚未服务于 Demo 主目标的功能。此次重构没有继续兼容旧结构，而是围绕一个清晰问题重新收敛：
+
+> 用户说一句自然语言后，Agent 不只推荐地点，而是把活动、餐厅、路线、时间线和后续动作组合成一个可以直接执行的本地生活方案。
+
+本次对话中完成了以下阶段：
+
+### 1. MVP 架构重构
+
+- 删除 V1/V2 和重复 orchestrator，统一为 `PlannerAgent.run(...)` 单一主流程。
+- 保留简洁的 FastAPI 外壳和 JSON 数据读取逻辑。
+- 将意图解析、排序、计划构建、工具调用、执行动作和 schema 拆到独立模块。
+- 保留 `POST /api/plan`，并新增 CLI。
+- 使用本地 JSON 数据跑通活动、餐厅、路线、预约和消息发送流程。
+
+### 2. 强意图解析
+
+- 支持家庭、朋友、情侣和个人场景。
+- 支持时间窗口、活动时长、同行人、人数、孩子年龄和男女组合。
+- 支持距离、预算、活动类型、减脂/清淡饮食、天气和避雷约束。
+- 规则解析始终保留，外部 LLM 不可用时仍能生成完整方案。
+
+### 3. 路线和可执行时间线
+
+- 增加结构化 `route` 和 `timeline`。
+- 默认位置固定为“上海徐汇”，不再把完整家庭地址错误识别成城市。
+- 所有 Mock 通勤时间限制在合理范围，避免出现 1778 分钟等异常结果。
+- 前端增加路线概览和纵向时间线组件。
+- 路线结构预留 `polyline`，可继续接入高德地图 JS API。
+
+### 4. 流式 Agent 执行过程
+
+- 在同一个 `PlannerAgent.run(query, event_callback=...)` 中增加进度事件。
+- `POST /api/plan` 和 `POST /api/plan/stream` 共用同一条规划逻辑。
+- SSE 实时展示意图解析、活动搜索、餐厅搜索、路线规划、时间线、预约和消息生成过程。
+- callback 失败不会中断主流程。
+
+### 5. 用户偏好与个性化排序
+
+- 增加轻量偏好问卷和内存 profile。
+- 支持活动类型、通勤上限、餐饮偏好、活动强度、预算、室内优先和少排队。
+- 将问卷转换为归一化 ranking weights。
+- POI 和餐厅排序同时考虑距离、活动匹配、儿童友好、饮食、评分、预算、室内和等待时间。
+- 返回 `preference_explanation`，让用户知道偏好如何影响推荐。
+
+### 6. Task-first 框架纠偏
+
+- 新增 `llm_task_planner`，由 DeepSeek 优先把自然语言拆成结构化、带顺序的 `PlannedTask`。
+- LLM 只判断任务、工具和路线需求，不生成 POI，不编造执行结果。
+- DeepSeek 不可用或 JSON/schema 校验失败时，规则 fallback 生成同一任务契约。
+- 新增 `tool_router`，逐项调用外卖、POI、餐厅、酒吧和酒店搜索能力。
+- 新增 `itinerary_composer`，只消费 ordered tasks 与 `ToolExecutionResult`，统一生成路线、时间线、动作、消息和冲突提示。
+- `food_delivery` 进入 timeline/actions，但不会加入线下 route。
+- 多个下午活动不会静默消失；体力或时间偏紧时返回 `planning_warnings` 和备选建议。
+- 普通家庭 Demo 同样走 task-first 主链路，旧固定流程只作为最终兼容 fallback。
+- 整个系统仍只有 `PlannerAgent.run(...)` 一个编排入口，没有新增 V3 或 streaming orchestrator。
+
+多阶段流程：
+
+```text
+自然语言
+→ llm_task_planner（失败时规则 fallback）
+→ structured ordered tasks
+→ tool_router / tool executor
+→ AMap / food / restaurant / hotel / bar tools
+→ itinerary_composer
+→ route + timeline + actions + message
+```
+
+### 7. DeepSeek 与高德真实 API
+
+- DeepSeek 接入任务规划，并保留意图解析、搜索词规划、决策解释和最终文案能力供兼容流程使用。
+- 所有 LLM JSON 输出经过 `json.loads` 和 Pydantic 校验。
+- 不展示 hidden chain-of-thought，只返回可公开展示的 `public_reasoning`。
+- 高德接入地理编码、活动 POI、餐厅搜索和最终三段路线。
+- 候选排序使用本地坐标估算，仅为最终选中的路线调用高德，避免触发路线接口 QPS 限制。
+- 高德返回的地点、坐标和路线是真实数据；评分、价格、排队、儿童友好、减脂友好和预约能力由 Mock Local Commerce 补充。
+- 外部 API 缺少 key、超时、HTTP 异常、非法 JSON、schema 不匹配或异常路线时自动回退。
+
+### 8. 前端与质量保障
+
+- 前端展示偏好设置、流式 Agent 进度、路线、时间线、推荐解释和可发送消息。
+- 明确标记事件来源：`DeepSeek`、`AMap`、`Mock fallback`。
+- 明确标记地点和路线来源：`amap` 或 `mock`。
+- 新增意图、路线、时间线、streaming、偏好、DeepSeek fallback 和 AMap fallback 测试。
+- 当前验证结果：`61 passed`，前端 `npm run build` 通过。
+
+## 核心设计思想
+
+### Agent 的目标是完成任务
+
+系统的输出不是“这里有几个推荐”，而是：
+
+```text
+理解需求
+→ 拆成有序任务
+→ 按任务选择并执行工具
+→ 合并工具结果
+→ 规划路线、时间和冲突提示
+→ 模拟点餐、预约与消息
+→ 生成可直接转发的消息
+```
+
+推荐只是中间步骤，可执行计划才是最终产品。
+
+### 主流程只能有一套
+
+普通接口、流式接口、Mock 模式和真实 API 模式都复用：
+
+```python
+PlannerAgent.run(query, event_callback=None)
+```
+
+流式输出只是观察同一主流程的进度，不复制规划逻辑，也不新增 streaming orchestrator。
+
+### LLM 负责理解和表达，代码负责事实和约束
+
+- LLM 适合拆分任务、判断工具、解析自然语言、解释选择和润色文案。
+- Pydantic schema、排序函数、路线边界和计划构建器负责确定性约束。
+- LLM 不直接决定不存在的地点，不得修改已选地点、时间线或执行结果。
+- LLM 输出异常时立即使用规则结果，不让自由文本污染核心流程。
+
+### Provider、Tool 和 Planner 分层
+
+- `providers/`：处理 DeepSeek、高德等外部协议、认证、超时和响应解析。
+- `tools/`：提供统一的活动、餐厅、路线、预约和消息能力。
+- `core/`：负责意图、搜索词、排序、计划、解释和最终文案。
+- `PlannerAgent`：只编排步骤，不承载所有业务细节。
+
+真实供应商变化时，应替换 provider 或 tool，而不是重写 Agent。
+
+### Mock 是可靠降级，不是临时代码
+
+Mock 数据保证比赛 Demo 在无网络、无 key、限流或第三方异常时仍能完整运行。每个外部能力都应满足：
+
+```text
+真实 API 成功 → 使用真实结果
+真实 API 失败 → 发出 fallback 事件 → 使用 Mock/规则结果
+```
+
+无论外部状态如何，`/api/plan` 和 `/api/plan/stream` 都应尽量返回完整方案。
+
+### 数据来源必须透明
+
+- `source=amap`：地点身份或路线来自高德。
+- `source=mock`：使用本地数据或 Mock fallback。
+- 商户评分、排队和预约目前不是高德或美团真实交易数据，必须明确标记为 Mock Local Commerce。
+- 不把“模拟预约成功”描述成真实下单或真实支付。
+
+### 安全和可解释性优先
+
+- API key 只从 `.env` 或环境变量读取。
+- `.env` 不提交到 Git，`.env.example` 只保留变量名。
+- 流式事件只展示公开阶段和 `public_reasoning`。
+- 决策解释只能引用候选地点。
+- 最终文案不能修改既定地点、时间或预约状态。
+
+## 当前主流程
+
+```text
+自然语言
+→ 当前用户偏好与归一化权重
+→ DeepSeek LLM Task Planner（失败时规则 task planner）
+→ PlannedTask[]
+→ Tool Router
+→ 高德 POI / 餐厅 / 酒吧 / 酒店或 Mock food order
+→ ToolExecutionResult[]
+→ Itinerary Composer
+→ route + timeline + actions + planning_warnings
+→ Mock 预约与消息发送
+→ JSON + 自然语言方案
+```
+
+`POST /api/plan` 和流式接口最终返回的响应包含：
+
+- `user_intent`：结构化意图、`tasks`、`time_windows` 与约束
+- `task_plan`：LLM 或 fallback 生成的有序任务、工具选择与路线需求
+- `plan`：活动方案与推荐理由
+- `route`：仅包含 `route_needed=true` 的线下地点和通勤
+- `timeline`：前端可直接渲染的可执行时间线
+- `actions`：当前 MVP 的 Mock 执行结果
+- `planning_warnings`：任务冲突、时间偏紧和备选建议
+- `preference_explanation`：偏好如何影响本次推荐
+- `decision_explanation`：只基于候选地点生成的公开选择依据
+- `composition`：最终摘要、路线说明和可转发消息
+
+每个地点和路线都带有 `source`。值为 `amap` 时表示地点身份或路线来自高德，值为 `mock` 时表示使用本地数据；`route.polyline` 会在高德返回时保留，供后续地图组件使用。
+
+## 项目结构
+
+```text
+src/
+  main.py
+  app.py
+  config/settings.py
+  schemas/models.py
+  agents/
+    planner_agent.py
+    executor_agent.py
+  core/
+    intent_parser.py
+    task_decomposer.py
+    llm_task_planner.py
+    tool_router.py
+    itinerary_composer.py
+    itinerary_builder.py
+    llm_intent_parser.py
+    query_planner.py
+    decision_explainer.py
+    final_composer.py
+    plan_builder.py
+    ranking.py
+  providers/
+    deepseek_provider.py
+    amap_provider.py
+    local_commerce_provider.py
+  tools/
+    poi_tool.py
+    food_order_tool.py
+    restaurant_tool.py
+    weather_tool.py
+    route_tool.py
+    reservation_tool.py
+    message_tool.py
+  services/location_service.py
+  services/preference_service.py
+
+data/
+  pois.json
+  restaurants.json
+  availability.json
+  travel_times.json
+  weather.json
+
+tests/test_demo_flow.py
+tests/test_preferences.py
+tests/test_deepseek_fallback.py
+tests/test_amap_fallback.py
+tests/test_llm_task_planner.py
+tests/test_tool_router.py
+tests/test_task_driven_planning.py
+```
+
+## 安装
 
 ```bash
 pip install -r requirements.txt
-cd frontend && npm install && npm run build && cd ..
+cd frontend
+npm install
+npm run build
+cd ..
 ```
 
-### 2. 配置 API Key
+## 外部 API 配置
+
+项目默认关闭外部 API，可直接使用原有规则和 Mock 数据。复制 `.env.example` 中的变量名到本地 `.env`，按需配置：
 
 ```bash
-cp .env.example .env
+ENABLE_LLM=true
+DEEPSEEK_API_KEY=
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-chat
+LLM_TIMEOUT_SECONDS=20
+
+ENABLE_AMAP=true
+AMAP_API_KEY=
+AMAP_BASE_URL=https://restapi.amap.com
+AMAP_TIMEOUT_SECONDS=10
 ```
 
-然后编辑 `.env` 文件，填入你的 API Key：
+- 开关为 `false` 时不会调用对应外部 API。
+- 开关为 `true` 但 key 缺失、超时、HTTP 异常、JSON 非法或 schema 校验失败时自动回退。
+- `.env` 已被 `.gitignore` 忽略，不应提交真实 key。
+- 若真实 key 曾经进入 Git 历史，应立即在对应平台重新生成。
 
-```env
-# 运行模式（推荐 demo_safe 先试试）
-APP_MODE=demo_safe
+DeepSeek 使用 OpenAI-compatible Chat Completions API。主链路使用它生成严格 JSON 的 ordered task plan；兼容流程仍保留意图解析、搜索词规划、决策解释和最终文案能力。所有结构化输出均经过 `json.loads` 和 Pydantic 校验，不向前端暴露 hidden chain-of-thought。
 
-# DeepSeek API Key — 用于理解你的自然语言需求
-# 免费注册获取：https://platform.deepseek.com/api_keys
-DEEPSEEK_API_KEY=sk-你的key
+高德 Web Service API 用于地理编码、POI/餐厅搜索和路线估算。当前 Demo 中，地图 POI 和路线可使用高德真实 API；餐厅评分、排队、预约等本地生活交易数据使用 Mock Local Commerce Provider 模拟，后续可以替换为真实商户平台或 MCP 工具。
 
-# 高德地图 API Key — 用于搜索地点、路线、天气
-# 免费注册获取：https://console.amap.com/dev/key/app
-AMAP_API_KEY=你的key
+## CLI
+
+```bash
+python src/main.py "今天下午想带老婆孩子出去玩几个小时，别太远，孩子5岁，老婆最近在减肥"
 ```
 
-> **没有 API Key 也能跑：** 使用 `APP_MODE=demo_safe` 或 `development`，系统会用模拟数据运行。
+仅输出 JSON：
 
-### 3. 启动
+```bash
+python src/main.py --json-only "今天下午想带老婆孩子出去玩几个小时，别太远，孩子5岁，老婆最近在减肥"
+```
+
+## FastAPI
 
 ```bash
 python run_backend.py
 ```
 
-浏览器打开 **http://localhost:8000**，输入需求，点"开始规划"。
+打开 <http://localhost:8000>，或调用：
 
----
+`HOST=0.0.0.0` 表示服务监听所有本机网络接口，但 `0.0.0.0` 不是浏览器访问地址。浏览器应使用：
 
-## 运行模式
-
-| 模式 | 用途 | LLM/POI/天气/路线 | 执行动作 | 需要 API Key |
-|------|------|:---:|:---:|:---:|
-| `demo_real` | 比赛展示 / 录制视频 | 真实 API 优先，mock 兜底 | mock | 推荐填 |
-| `demo_safe` | 现场兜底 / 稳定展示 | 全部 mock | mock | 否 |
-| `development` | 本地开发 | 有 key 用真实，无 key 用 mock | mock | 否 |
-| `test` | 自动化测试 | 全部 mock | mock | 否 |
-
-### demo_real vs demo_safe
-
-**demo_real** — 适合录制演示视频、网络稳定时现场展示：
-- 使用真实 DeepSeek + 高德地图 API
-- 展示真实地点、真实路线、真实天气
-- 如果真实 API 失败，自动 fallback 到 mock
-- 票务、预约、打车、消息仍使用 mock（不涉及真实支付/隐私）
-
-**demo_safe** — 适合比赛现场兜底、网络不稳定时：
-- 全部使用 mock 数据，结果稳定可控
-- 不依赖任何外部网络
-- 不会因为 API 限流/超时翻车
-- 配合 Demo Scenario 可以稳定触发各种 fallback 场景
-
-```bash
-# 切换模式只需改 .env
-APP_MODE=demo_real   # 真实 API 展示
-APP_MODE=demo_safe   # 稳定 mock 展示
+```text
+http://localhost:8000
 ```
 
-### 前端模式切换
+或：
 
-页面顶部有模式切换开关，点击即可在 `demo_real` 和 `demo_safe` 之间切换，**无需重启后端**。切换后右侧 Provider 状态指示灯会实时更新。
-
----
-
-## Agent Pipeline（13 阶段）
-
-当前主流程是 Local Life Agent Pipeline，完整执行链路：
-
-意图解析 → 定位解析 → 用户画像融合 → POI/餐厅搜索 → 天气查询 → 路线计算 → 候选排序 → 构建方案 → 可行性检查 → 动作计划 → 分享消息 → 工具执行 → 方案解释
-
-### 位置识别
-
-定位优先级：**浏览器 GPS > 手动输入 > 用户输入识别 > 用户默认地址 > 系统默认**
-
-支持 50+ 中国城市的地理编码数据库（包括 湖州、沧州 等全部省会及主要城市）。当用户在 query 中明确提到城市名（如"我在湖州市"），该城市一定会被使用，**绝不会错误 fallback 到上海**。即使高德地理编码失败，也会使用内置的城市中心坐标 fallback。
-
-### POI 搜索 & 距离过滤
-
-搜索采用三级 fallback 链：
-1. **关键词搜索** — 根据 scene 和 query 生成关键词，调用 AMap POI 搜索
-2. **扩大搜索** — 如果无结果，用通用关键词（景点/公园/博物馆/商场）重新搜索
-3. **Mock fallback** — 如果仍然无结果，使用内置的城市专属 POI 数据（含 湖州/沧州 等城市的景点、博物馆、酒吧等）
-
-**距离过滤：** AMap 的城市过滤不严格，有时会返回其他城市的 POI。系统在每次 AMap 搜索后自动用 haversine 公式过滤掉距离出发地超过 **80km** 的候选。
-
-### Scene 智能推断
-
-当 LLM 没有返回明确场景时，系统通过关键词启发式推断：
-- `老婆/孩子/宝宝/家人` → family
-- `朋友/聚会/哥们/闺蜜` → friends
-- `女朋友/男朋友/约会` → couple
-- `旅游/景点/酒吧/一个人` → solo（默认也使用 solo，而非 family）
-
-这避免了"在湖州市，推荐旅游景点"被错误识别为家庭出游。
-
-### API 调用保护
-
-- 所有外部 API 调用都有 **15 秒超时**保护（`asyncio.wait_for`）
-- AMap API 调用之间间隔 **0.5 秒**，避免触发免费版 QPS 限制
-- 路线计算最多请求 **5 条**（免费版 driving direction QPS 仅 1-2）
-- 任何 API 失败都不中断流程，自动进入下一级 fallback
-
----
-
-## 流式输出 (SSE)
-
-前端默认使用流式输出，实时看到 Agent 每一步执行过程。如果流式连接失败，自动 fallback 到普通请求。
-
-```bash
-# 主流式接口
-curl -X POST http://localhost:8000/api/plan/stream \
-  -H 'Content-Type: application/json' \
-  -d '{"user_id":"u_001","query":"下午带孩子出去玩"}'
+```text
+http://127.0.0.1:8000
 ```
-
-前端会实时显示：
-- Agent Planning Trace 逐步追加
-- Tool Call Timeline 实时更新
-- Fallback 事件即时展示
-- Partial Itinerary 实时推送
-- Final 事件到达后填充完整结果
-
-事件类型：`trace` / `tool_call` / `fallback` / `partial_itinerary` / `final` / `error`
-
----
-
-## Demo Scenario（可控异常展示）
-
-比赛 Demo 时可以稳定触发各种 fallback 场景。
-
-前端下拉框选择，或 API 传 `demo_scenario` 参数：
-
-| Scenario | 效果 |
-|------|------|
-| `normal` | 正常模式 |
-| `restaurant_full` | 强制触发餐厅无位 fallback（17:00 切换） |
-| `rainy_weather` | 强制天气为雨天，优先室内活动 |
-| `ticket_sold_out` | 强制门票售罄，切换到第二候选 POI |
-| `optional_service_fail` | 强制蛋糕/咖啡下单失败，主流程不受影响 |
-| `route_too_far` | 强制第一候选距离过远，切换到更近候选 |
 
 ```bash
 curl -X POST http://localhost:8000/api/plan \
   -H 'Content-Type: application/json' \
-  -d '{"user_id":"u_001","query":"下午带孩子出去玩","demo_scenario":"restaurant_full"}'
+  -d '{"query":"今天下午想带老婆孩子出去玩几个小时，别太远，孩子5岁，老婆最近在减肥"}'
 ```
 
----
-
-## 为什么执行动作仍使用 Mock API
-
-票务购买、餐厅预约、打车、微信消息这些操作涉及：
-- 真实平台权限（美团/滴滴/微信不开放此类 API）
-- 支付和资金安全
-- 用户隐私（手机号、家庭地址）
-
-因此在任何模式下，执行动作（ticket/restaurant/ride/message）始终使用 mock API。这意味着：
-- 不会产生真实订单
-- 不会扣费
-- 不会发送真实微信消息
-
-Demo 中展示的是完整的 Agent 规划和执行能力，而非真实的支付系统。
-
----
-
-## 怎么获取 API Key？
-
-**DeepSeek（5 分钟）：**
-1. 打开 https://platform.deepseek.com
-2. 注册账号 → 点击「API Keys」→ 「创建 API Key」
-3. 复制 key，填入 `.env` 的 `DEEPSEEK_API_KEY`
-4. 新用户送免费额度，够测试用
-
-**高德地图（3 分钟）：**
-1. 打开 https://console.amap.com/dev/key/app
-2. 注册/登录 → 「创建新应用」→ 「添加 Key」
-3. 服务平台选「Web服务」→ 提交
-4. 复制 key，填入 `.env` 的 `AMAP_API_KEY`
-5. 免费，每天有调用配额
-
----
-
-## 项目结构
-
-```
-local_life_agent/
-├── run_backend.py              # 一键启动
-├── .env                        # 你的 API Key 配置（不要提交到 git）
-├── .env.example                # 配置模板
-├── backend/
-│   ├── config/settings.py      # 配置 & 模式控制 (demo_real/demo_safe)
-│   ├── providers/              # API 对接层（DeepSeek / 高德 / mock）
-│   ├── agent/                  # Agent 核心逻辑
-│   │   ├── main_agent.py              # 统一入口（当前主流程）
-│   │   ├── orchestrator_v2.py         # 主编排器 (13阶段管线)
-│   │   ├── stream_orchestrator.py     # 流式编排器 (SSE, 同13阶段)
-│   │   ├── orchestrator_shared.py     # 共享逻辑 (scene推断/POI fallback/距离过滤)
-│   │   ├── orchestrator.py            # [Legacy] V1 mock pipeline
-│   │   ├── location_resolver.py       # 定位解析 (50+城市, 多级优先级)
-│   │   ├── ranking.py                 # 候选排序引擎 (加权评分)
-│   │   ├── plan_generator.py          # 行程构建
-│   │   ├── feasibility_v2.py          # 可行性检查 (12项)
-│   │   ├── action_planner_v2.py       # 动作计划生成
-│   │   ├── executor_v2.py             # 工具执行 (retry + fallback)
-│   │   ├── share_message_v2.py        # 分享消息生成
-│   │   └── explanation.py             # LLM 方案解释 (含 markdown sanitization)
-│   ├── api/                    # HTTP 接口 (REST + SSE)
-│   └── tools/                  # 工具函数 (mock API)
-├── frontend/                   # Web 前端（React + TypeScript）
-│   └── src/
-│       ├── App.tsx             # 主页面 (默认流式, 位置展示, 模式切换)
-│       ├── api.ts              # API 调用 & SSE 解析
-│       └── components/         # UI 组件 (Trace/Order/Timeline)
-├── data/                       # 模拟数据 (users/families/friends)
-├── tests/                      # 测试
-└── docs/                       # 设计文档
-```
-
-## API 接口
-
-| 接口 | 说明 |
-|------|------|
-| `GET /` | 前端页面 |
-| `GET /api/provider-status` | 查看当前 Provider 模式 (基本) |
-| `GET /api/provider/status` | 查看详细 Provider 状态 (含 safe_for_live_demo) |
-| `POST /api/mode/switch` | 运行时切换模式 (demo_real ↔ demo_safe) |
-| `POST /api/plan` | **主规划接口** (当前 V2 pipeline) |
-| `POST /api/plan/stream` | **主流式接口** (SSE, 默认使用) |
-| `POST /api/plan/v2` | 兼容接口 (等同于 /api/plan) |
-| `POST /api/plan/v2/stream` | 兼容接口 (等同于 /api/plan/stream) |
-
-### 示例请求
+流式查看 Agent 执行过程：
 
 ```bash
-# 主接口
-curl -X POST http://localhost:8000/api/plan \
+curl -N -X POST http://localhost:8000/api/plan/stream \
   -H 'Content-Type: application/json' \
-  -d '{"user_id":"u_001","query":"带孩子去公园玩，3个人，想吃川菜"}'
-
-# 带定位 + demo scenario
-curl -X POST http://localhost:8000/api/plan \
-  -H 'Content-Type: application/json' \
-  -d '{"user_id":"u_001","query":"下午带孩子出去玩","location":{"source":"manual","address":"上海徐汇区"},"demo_scenario":"restaurant_full"}'
-
-# 流式接口
-curl -X POST http://localhost:8000/api/plan/stream \
-  -H 'Content-Type: application/json' \
-  -d '{"user_id":"u_001","query":"下午带老婆孩子出去玩"}'
+  -d '{"query":"今天下午想带老婆孩子出去玩几个小时，别太远，孩子5岁，老婆最近在减肥"}'
 ```
 
----
+- `POST /api/plan`：普通 JSON 响应
+- `POST /api/plan/stream`：SSE progress 事件，最后发送完整 result
 
-## 早期 V1 Mock Pipeline（Legacy）
+启用 DeepSeek 后，可在 SSE 中看到 `source: "deepseek"` 的 `llm_intent_finished`、`query_planning_finished`、`decision_explanation_finished` 和 `final_composer_finished`。若调用失败，会出现 `api_fallback_triggered`，最终仍返回完整方案。
 
-早期 V1 mock pipeline 已保留为 legacy fallback（`backend/agent/orchestrator.py`），仅用于测试和 mock 工具复用。当前主流程是上述的 Local Life Agent Pipeline（`main_agent.py` → `orchestrator_v2.py` / `stream_orchestrator.py`），包含完整的 provider 抽象、真实 API 集成、流式输出、13 阶段管线、可行性检查和动作执行。
+Task-first 主链路还会发送
+`llm_task_planning_started`、`llm_task_planning_finished`、
+`tool_routing`、`tool_execution` 和 `itinerary_composing`。
 
----
-
-## 运行测试
+启用高德后，可检查：
 
 ```bash
-python -m pytest tests/ -v
+curl -s -X POST http://localhost:8000/api/plan \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"今天下午想带老婆孩子出去玩几个小时，别太远，孩子5岁"}'
 ```
 
----
+返回中的 `plan.steps[].source`、`route.stops[].source` 或 `route.source` 为 `amap`，说明真实高德数据已生效；为 `mock` 则表示已回退。
 
-## 常见问题
+偏好接口：
 
-**Q: 前端页面打不开，显示 JSON？**
-A: 先运行 `cd frontend && npm run build` 构建前端，再启动后端。
+```bash
+curl http://localhost:8000/api/preferences/default
 
-**Q: 改了 .env 没生效？**
-A: 可以直接用前端模式切换开关，或重启后端。前端切换无需重启。
+curl -X POST http://localhost:8000/api/preferences \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "activity_types": ["亲子乐园", "展览"],
+    "max_travel_minutes": 30,
+    "dining_preferences": ["清淡健康", "亲子友好"],
+    "activity_intensity": "light",
+    "budget_level": "medium",
+    "prefer_indoor": true,
+    "prefer_low_wait": true
+  }'
 
-**Q: demo_real 模式启动报错？**
-A: demo_real 模式下如果 API key 缺失会自动降级为 mock，不会报错。如需强制使用真实 API，确保 `.env` 里两个 key 都存在。
+curl http://localhost:8000/api/preferences/current
+```
 
-**Q: 推荐结果里评分、人均显示 unknown？**
-A: 这是预期行为。高德地图 API 不返回餐厅评分和人均消费，这些字段如实标记为 unknown，不会编造数据。
+偏好当前保存在服务进程内存中，重启后恢复默认 profile。
 
-**Q: 流式输出不工作？**
-A: 前端默认使用流式输出。如果流式连接失败，会自动 fallback 到普通模式。某些浏览器可能对 SSE 有兼容性问题，推荐使用 Chrome/Edge。
+如 8000 端口被占用：
 
-**Q: 定位不准确？**
-A: 浏览器定位精度取决于设备和网络环境。可以手动选择出发地，或在 query 中说明当前位置（如"我在湖州市"），系统会自动识别。
+```bash
+PORT=8010 python run_backend.py
+```
 
-**Q: 方案里出现了其他城市的 POI？**
-A: 系统已内置距离过滤（80km），自动拒绝与出发地距离过远的候选。如仍出现异常结果，通常是 mock fallback 数据需要更新该城市的默认坐标。
+## 测试
+
+```bash
+python -m pytest
+
+python -m pytest tests/test_llm_task_planner.py
+python -m pytest tests/test_tool_router.py
+python -m pytest tests/test_task_driven_planning.py
+```
+
+## 后续接入
+
+- 地图可视化：读取 `route.origin`、`route.stops` 和 `route.polyline` 接入高德 JS API。
+- 更多高德能力：扩展 `src/providers/amap_provider.py`，保持 tools 的内部 schema 不变。
+- 真实商户数据：替换 `src/providers/local_commerce_provider.py`。
+- 真实预约或下单：替换 `src/tools/reservation_tool.py` 或 `food_order_tool.py`
+- 微信、短信或其他消息渠道：替换 `src/tools/message_tool.py`
+- MCP 预约工具：在 `ExecutorAgent` 中注入实现相同结构化输入输出的 reservation tool，并保留当前 Mock fallback。
+
+Agent、排序和时间表无需因工具实现变化而重写。
