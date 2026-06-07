@@ -1,8 +1,9 @@
 """Priority 2 coverage for route and timeline structures."""
 
 from src.agents.planner_agent import PlannerAgent
+from src.core.plan_builder import build_timeline
 from src.core.intent_parser import parse_intent
-from src.schemas.models import LocationInput
+from src.schemas.models import LocationInput, ResolvedLocation, RouteEstimate
 from src.services.location_service import resolve_location
 from src.tools.route_tool import estimate_route
 
@@ -39,6 +40,67 @@ def test_plan_response_contains_typed_timeline():
     assert {"departure", "activity", "restaurant"} <= timeline_types
     assert result.timeline.items[0].time == "14:00"
     assert result.timeline.total_duration_minutes > 0
+
+
+def test_timeline_shows_restaurant_arrival_wait_and_meal_start():
+    intent = parse_intent("今天下午带孩子出去玩，然后吃川菜")
+    location = ResolvedLocation(
+        location_id="home",
+        city="上海",
+        district="徐汇区",
+        address="上海徐汇",
+        lat=31.1886,
+        lng=121.4365,
+        source="demo_default",
+    )
+    poi = {
+        "name": "儿童游乐场",
+        "avg_duration_min": 90,
+    }
+    restaurant = {
+        "name": "川菜馆",
+        "reservation_supported": True,
+    }
+
+    timeline = build_timeline(
+        intent,
+        location,
+        poi,
+        restaurant,
+        RouteEstimate(distance_km=2, duration_min=17),
+        RouteEstimate(distance_km=3, duration_min=16),
+        RouteEstimate(distance_km=2, duration_min=10),
+    )
+
+    timeline_rows = [
+        (item.time, item.type, item.title, item.description)
+        for item in timeline.items
+    ]
+    assert timeline_rows[2] == (
+        "15:47",
+        "transfer",
+        "前往川菜馆",
+        "预计通勤 16 分钟",
+    )
+    assert any(
+        time == "16:03"
+        and item_type == "restaurant"
+        and title == "到达川菜馆"
+        for time, item_type, title, _ in timeline_rows
+    )
+    assert any(
+        time == "16:03"
+        and item_type == "break"
+        and "等待" in title
+        and "27 分钟" in description
+        for time, item_type, title, description in timeline_rows
+    )
+    assert any(
+        time == "16:30"
+        and item_type == "restaurant"
+        and title == "开始在川菜馆用餐"
+        for time, item_type, title, _ in timeline_rows
+    )
 
 
 def test_route_fallback_never_returns_extreme_minutes():

@@ -3,6 +3,7 @@
 from datetime import datetime
 import uuid
 
+from src.config.settings import settings
 from src.schemas.models import (
     ActionResult,
     ActivityPlan,
@@ -28,7 +29,7 @@ def build_share_message(
     audience = "大家" if intent.scene == "friends" else "你们"
     return (
         f"搞定了，{start} 出发，先去{activity.place}，"
-        f"{meal.time} 左右去{meal.place}吃饭{reservation_text}。"
+        f"{meal.time} 开始在{meal.place}吃饭{reservation_text}。"
         f"路线不远，整体约 {intent.duration_label}，{audience}按这个计划走就行。"
     )
 
@@ -119,6 +120,12 @@ def send_message(target: str, message: str) -> ActionResult:
         details={
             "message_id": f"MOCK-MSG-{uuid.uuid4().hex[:8].upper()}",
             "channel": "mock_message",
+            "execution_source": (
+                "mock_fallback"
+                if settings.run_mode == "live"
+                and not settings.use_mock_actions
+                else "mock"
+            ),
             "sent_at": datetime.now().isoformat(timespec="seconds"),
         },
     )

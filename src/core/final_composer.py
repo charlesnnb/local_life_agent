@@ -90,6 +90,8 @@ def compose_final_copy(
     ]
     if any(time not in composition.share_message for time in required_times):
         return fallback, False, "DeepSeek share message 遗漏既定时间"
+    if _uses_meal_start_as_arrival(plan, composition):
+        return fallback, False, "DeepSeek final copy 将用餐开始时间写成到达时间"
     allowed_times = {item.time for item in timeline.items}
     mentioned_times = set(
         re.findall(
@@ -119,3 +121,32 @@ def compose_final_copy(
     ):
         return fallback, False, "DeepSeek share message 编造了预约结果"
     return composition, True, None
+
+
+def _uses_meal_start_as_arrival(
+    plan: ActivityPlan,
+    composition: FinalComposition,
+) -> bool:
+    arrival = next(
+        (step for step in plan.steps if step.action == "到达餐厅" and step.place),
+        None,
+    )
+    meal = next(
+        (step for step in plan.steps if step.action == "晚餐" and step.place),
+        None,
+    )
+    if arrival is None or meal is None or arrival.time == meal.time:
+        return False
+    text = " ".join([
+        composition.summary,
+        composition.timeline_explanation,
+        composition.share_message,
+    ])
+    escaped_time = re.escape(meal.time)
+    escaped_place = re.escape(meal.place or "")
+    return bool(
+        re.search(
+            rf"{escaped_time}\s*(?:左右)?\s*(?:到达|抵达|到)\s*{escaped_place}",
+            text,
+        )
+    )

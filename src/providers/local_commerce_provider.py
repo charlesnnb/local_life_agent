@@ -49,6 +49,7 @@ def enrich_activity(
         "tags": list(dict.fromkeys(tags)),
         "suitable_scenes": [intent.scene],
         "age_range": [0, 99] if child_friendly else [6, 99],
+        "age_range_source": "inferred_soft",
         "avg_duration_min": 90,
         "rating": place.get("rating") or round(4.1 + seed % 7 / 10, 1),
         "price": 40 + seed % 100,

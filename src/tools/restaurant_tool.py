@@ -1,6 +1,6 @@
 """Restaurant search using AMap identity plus mock commerce enrichment."""
 
-from src.config.settings import load_json
+from src.config.settings import current_demo_scenario, load_json
 from src.providers.amap_provider import AmapProvider
 from src.providers.local_commerce_provider import enrich_restaurant
 from src.schemas.models import ResolvedLocation, UserIntent
@@ -22,7 +22,7 @@ def search_restaurants(
         )
         if real_candidates:
             return real_candidates
-    return _search_mock(intent, location)
+    return _search_mock(intent, location, queries)
 
 
 def _search_amap(
@@ -51,11 +51,25 @@ def _search_amap(
 def _search_mock(
     intent: UserIntent,
     location: ResolvedLocation,
+    queries: list[str] | None = None,
 ) -> list[dict]:
     candidates = []
     wait_times = _average_wait_times()
+    allow_scene_fallback = current_demo_scenario() in {
+        "restaurant_full",
+        "traffic_delay",
+    }
+    requested_cuisine = _requested_cuisine(queries or [])
     for restaurant in load_json("restaurants.json").get("restaurants", []):
-        if intent.scene not in restaurant.get("suitable_scenes", []):
+        if (
+            intent.scene not in restaurant.get("suitable_scenes", [])
+            and not allow_scene_fallback
+        ):
+            continue
+        if (
+            requested_cuisine
+            and requested_cuisine not in _restaurant_text(restaurant)
+        ):
             continue
 
         candidate = dict(restaurant)
@@ -80,6 +94,31 @@ def _search_mock(
         )
         candidates.append(candidate)
     return candidates
+
+
+def _requested_cuisine(queries: list[str]) -> str | None:
+    query_text = " ".join(queries).lower()
+    aliases = {
+        "火锅": "hotpot",
+        "日料": "japanese",
+        "轻食": "light_food",
+        "素食": "vegetarian",
+    }
+    for label, tag in aliases.items():
+        if label in query_text or tag in query_text:
+            return tag
+    return None
+
+
+def _restaurant_text(restaurant: dict) -> str:
+    return " ".join(
+        [
+            str(restaurant.get("name", "")).lower(),
+            " ".join(
+                str(tag).lower() for tag in restaurant.get("tags", [])
+            ),
+        ]
+    )
 
 
 def _average_wait_times() -> dict[str, int]:

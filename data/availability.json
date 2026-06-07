@@ -307,6 +307,27 @@
       "available": true,
       "remaining_tables": 2,
       "queue_time_min": 5
+    },
+    {
+      "restaurant_id": "r_011",
+      "time": "17:00",
+      "available": true,
+      "remaining_tables": 6,
+      "queue_time_min": 5
+    },
+    {
+      "restaurant_id": "r_011",
+      "time": "18:00",
+      "available": true,
+      "remaining_tables": 5,
+      "queue_time_min": 10
+    },
+    {
+      "restaurant_id": "r_011",
+      "time": "19:00",
+      "available": true,
+      "remaining_tables": 4,
+      "queue_time_min": 10
     }
   ]
 }

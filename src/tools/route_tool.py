@@ -106,6 +106,7 @@ def build_route_plan(
         stops=[
             RouteStop(
                 type="activity",
+                label="活动",
                 name=activity.get("name", "活动地点"),
                 lat=activity_lat,
                 lng=activity_lng,
@@ -117,6 +118,7 @@ def build_route_plan(
             ),
             RouteStop(
                 type="restaurant",
+                label="餐厅",
                 name=restaurant.get("name", "餐厅"),
                 lat=restaurant_lat,
                 lng=restaurant_lng,
@@ -161,6 +163,8 @@ def build_ordered_route_plan(
         stops.append(
             RouteStop(
                 type=_route_stop_type(place.get("task_type")),
+                category=place.get("task_category", "unknown"),
+                label=place.get("route_label", "活动"),
                 name=place.get("name", "活动地点"),
                 lat=lat,
                 lng=lng,

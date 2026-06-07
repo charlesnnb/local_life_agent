@@ -77,6 +77,9 @@ class PlannedTask(BaseModel):
     route_needed: bool = False
     description: str
     priority: int = 0
+    companions: list[str] = Field(default_factory=list)
+    child_age: int | None = None
+    constraints: list[str] = Field(default_factory=list)
 
 
 class UserTask(PlannedTask):
@@ -97,6 +100,7 @@ class ToolExecutionResult(BaseModel):
     status: Literal["success", "failed"]
     selected_result: dict[str, Any] | None = None
     candidates: list[dict[str, Any]] = Field(default_factory=list)
+    rejected_candidates: list[dict[str, Any]] = Field(default_factory=list)
     message: str | None = None
 
 
@@ -166,6 +170,8 @@ class RouteOrigin(BaseModel):
 
 class RouteStop(BaseModel):
     type: Literal["activity", "restaurant", "bar", "hotel"]
+    category: str = "unknown"
+    label: str = "活动"
     name: str
     lat: float
     lng: float
@@ -178,7 +184,7 @@ class RoutePlan(BaseModel):
     origin: RouteOrigin
     stops: list[RouteStop]
     return_to_origin_minutes: int = Field(ge=0, le=45)
-    total_travel_minutes: int = Field(ge=0, le=180)
+    total_travel_minutes: int = Field(ge=0, le=480)
     transport: str = "taxi"
     source: str = "mock"
     polyline: list[list[float]] = Field(default_factory=list)
@@ -196,6 +202,7 @@ class TimelineItem(BaseModel):
         "food_order",
         "delivery",
         "break",
+        "free_time",
         "return",
         "arrival",
     ]
@@ -274,6 +281,9 @@ class PlanEvent(BaseModel):
         "final_composer_started",
         "final_composer_finished",
         "api_fallback_triggered",
+        "exception_detected",
+        "replan_search",
+        "replan_pending",
         "completed",
         "failed",
     ]
@@ -308,6 +318,52 @@ class FinalComposition(BaseModel):
     share_message: str
 
 
+class RuntimeMode(BaseModel):
+    mode: Literal["demo", "hybrid", "live"]
+    llm: Literal["mock", "deepseek"]
+    amap: Literal["mock", "amap"]
+    actions: Literal["mock", "mock_fallback", "live"]
+
+
+class PlanException(BaseModel):
+    exception_id: str
+    exception_type: str
+    source_task_id: str | None = None
+    severity: str
+    title: str
+    message: str
+    impact: dict[str, Any] = Field(default_factory=dict)
+    status: str = "detected"
+
+
+class ReplanOption(BaseModel):
+    option_id: str
+    title: str
+    description: str
+    changes: list[str] = Field(default_factory=list)
+    estimated_delay_minutes: int = 0
+    estimated_saved_minutes: int = 0
+    replacement_place: dict[str, Any] | None = None
+    operation: Literal[
+        "replace_restaurant",
+        "replace_activity",
+        "adjust_reservation",
+        "keep_original",
+    ]
+    original_plan: dict[str, Any] = Field(default_factory=dict)
+    proposed_plan: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ReplanProposal(BaseModel):
+    proposal_id: str
+    exception: PlanException
+    options: list[ReplanOption] = Field(default_factory=list)
+    requires_consent: bool = True
+    status: Literal["pending", "accepted", "kept"] = "pending"
+    selected_option_id: str | None = None
+
+
 class PlanResponse(BaseModel):
     user_intent: UserIntent
     task_plan: TaskPlan | None = None
@@ -319,4 +375,12 @@ class PlanResponse(BaseModel):
     decision_explanation: DecisionExplanation | None = None
     composition: FinalComposition | None = None
     planning_warnings: list[str] = Field(default_factory=list)
+    exceptions: list[PlanException] = Field(default_factory=list)
+    replan_proposals: list[ReplanProposal] = Field(default_factory=list)
     natural_language: str
+
+
+class ReplanConfirmRequest(BaseModel):
+    current_plan: PlanResponse
+    proposal_id: str
+    option_id: str

@@ -1,5 +1,6 @@
 """Compose ordered tasks and tool results into one executable itinerary."""
 
+from src.core.task_category import category_label, normalize_task_category
 from src.providers.amap_provider import AmapProvider
 from src.schemas.models import (
     ActionResult,
@@ -26,6 +27,7 @@ TIME_ANCHORS = {
     "下午": 14 * 60,
     "傍晚": 18 * 60,
     "晚上": 19 * 60 + 30,
+    "夜宵": 22 * 60,
 }
 
 
@@ -53,6 +55,11 @@ def compose_itinerary(
     steps: list[PlanStep] = []
     actions: list[ActionResult] = []
     warnings = _schedule_warnings(task_plan)
+    warnings.extend(
+        constraint
+        for task in task_plan.tasks
+        for constraint in task.constraints
+    )
     current_end = 0
     previous_place = _origin_name(location)
     offline_index = 0
@@ -66,30 +73,32 @@ def compose_itinerary(
                 "请稍后重试或手动选择地点。"
             )
             warnings.append(warning)
-            time = max(anchor, current_end)
-            items.append(
-                TimelineItem(
-                    time=_format_time(time),
-                    type="break",
-                    title=f"待确认：{task.description}",
-                    description=warning,
-                )
-            )
             steps.append(
                 PlanStep(
-                    time=_format_time(time),
+                    time=_format_time(anchor),
                     action="待确认",
                     place=task.target,
                     description=warning,
                 )
             )
-            current_end = time
+            pending_time = current_end or anchor
+            items.append(
+                TimelineItem(
+                    time=_format_time(pending_time),
+                    type="break",
+                    title=f"{task.time_window}{category_label(normalize_task_category(task))}任务待确认",
+                    description=(
+                        f"{warning} 这段时间暂作为自由安排。"
+                    ),
+                )
+            )
             continue
 
         if task.task_type == "food_delivery":
             action = ActionResult.model_validate(result.selected_result)
             actions.append(action)
             order_time = max(anchor, current_end)
+            _append_gap_explanation(items, current_end, order_time, task.description)
             delivery_time = order_time + int(
                 action.details.get("estimated_delivery_minutes", 30)
             )
@@ -124,11 +133,13 @@ def compose_itinerary(
         if leg is None:
             continue
         departure = max(anchor, current_end)
+        _append_gap_explanation(items, current_end, departure, task.description)
         arrival = departure + leg.duration_min
         duration = _task_duration(task.task_type, place)
         finish = arrival + duration
-        item_type = _timeline_type(task.task_type)
-        action_label = _action_label(task.task_type, task.target)
+        category = normalize_task_category(task)
+        item_type = _timeline_type(task.task_type, category)
+        action_label = _action_label(task.task_type, task.target, category)
 
         items.extend([
             TimelineItem(
@@ -205,6 +216,8 @@ def compose_itinerary(
                 description="任务规划未产生可执行结果。",
             )
         )
+    items.sort(key=lambda item: _parse_time(item.time))
+    steps.sort(key=lambda step: _parse_time(step.time))
     first_time = min(_parse_time(item.time) for item in items)
     last_time = max(_parse_time(item.time) for item in items)
     summary_targets = "、".join(
@@ -250,6 +263,8 @@ def _route_places(
             continue
         place["task_id"] = task.task_id
         place["task_type"] = task.task_type
+        place["task_category"] = normalize_task_category(task)
+        place["route_label"] = category_label(place["task_category"])
         places.append(place)
     return places
 
@@ -324,7 +339,13 @@ def _schedule_warnings(task_plan: TaskPlan) -> list[str]:
     return []
 
 
-def _timeline_type(task_type: str) -> str:
+def _timeline_type(task_type: str, category: str) -> str:
+    if category == "bar":
+        return "bar"
+    if category == "hotel_lounge":
+        return "hotel"
+    if category == "restaurant":
+        return "restaurant"
     return {
         "restaurant_search": "restaurant",
         "bar_visit": "bar",
@@ -332,18 +353,24 @@ def _timeline_type(task_type: str) -> str:
     }.get(task_type, "activity")
 
 
-def _action_label(task_type: str, target: str | None) -> str:
-    return {
+def _action_label(
+    task_type: str,
+    target: str | None,
+    category: str,
+) -> str:
+    legacy_labels = {
         "restaurant_search": "晚餐",
         "bar_visit": "酒吧放松",
         "hotel_search": "酒店放松",
-    }.get(
-        task_type,
-        (
-            "亲子活动"
-            if target == "亲子活动"
-            else "活动" if target == "休闲活动" else target or "活动"
-        ),
+    }
+    if task_type in legacy_labels:
+        return legacy_labels[task_type]
+    if category not in {"unknown", "food_delivery"}:
+        return category_label(category)
+    return (
+        "亲子活动"
+        if target == "亲子活动"
+        else "活动" if target == "休闲活动" else target or "活动"
     )
 
 
@@ -378,3 +405,25 @@ def _format_time(total_minutes: int) -> str:
 def _parse_time(value: str) -> int:
     hours, minutes = value.split(":")
     return int(hours) * 60 + int(minutes)
+
+
+def _append_gap_explanation(
+    items: list[TimelineItem],
+    current_end: int,
+    next_start: int,
+    next_task: str,
+) -> None:
+    gap = next_start - current_end
+    if current_end <= 0 or gap <= 45:
+        return
+    items.append(
+        TimelineItem(
+            time=_format_time(current_end),
+            type="free_time",
+            title="自由安排",
+            description=(
+                f"距离“{next_task}”还有约 {gap} 分钟，"
+                "可休息、就近活动或提前出发。"
+            ),
+        )
+    )

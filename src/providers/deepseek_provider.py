@@ -25,6 +25,13 @@ class DeepSeekProvider:
         client: httpx.Client | None = None,
         runtime_settings: Settings = settings,
     ):
+        self.demo_mode = (
+            runtime_settings.run_mode == "demo"
+            or runtime_settings.demo_mode
+        )
+        self.force_mock = (
+            self.demo_mode or runtime_settings.use_mock_llm
+        )
         self.enabled = (
             runtime_settings.enable_llm if enabled is None else enabled
         )
@@ -45,10 +52,14 @@ class DeepSeekProvider:
 
     @property
     def is_available(self) -> bool:
-        return self.enabled and bool(self.api_key)
+        return not self.force_mock and self.enabled and bool(self.api_key)
 
     @property
     def unavailable_reason(self) -> str | None:
+        if self.demo_mode:
+            return "Demo Mode：使用本地 Mock Planner"
+        if self.force_mock:
+            return "USE_MOCK_LLM 已启用"
         if not self.enabled:
             return "DeepSeek 未启用"
         if not self.api_key:

@@ -16,8 +16,11 @@ from src.schemas.models import (
     PlanResponse,
     PreferenceProfile,
     PreferenceSetup,
+    ReplanConfirmRequest,
+    RuntimeMode,
     UserPreference,
 )
+from src.core.replan_service import apply_replan
 from src.services.preference_service import (
     get_current_profile,
     get_default_setup,
@@ -43,6 +46,45 @@ frontend_dist = settings.frontend_dist
 assets_dir = frontend_dist / "assets"
 if assets_dir.exists():
     app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+
+@app.get("/api/runtime", response_model=RuntimeMode)
+def get_runtime_mode() -> RuntimeMode:
+    """Expose presentation-safe provider mode metadata to the frontend."""
+    mode = settings.run_mode
+    llm = (
+        "mock"
+        if (
+            mode == "demo"
+            or settings.demo_mode
+            or settings.use_mock_llm
+            or not settings.enable_llm
+            or not settings.deepseek_api_key
+        )
+        else "deepseek"
+    )
+    amap = (
+        "mock"
+        if (
+            mode == "demo"
+            or settings.demo_mode
+            or settings.use_mock_amap
+            or not settings.enable_amap
+            or not settings.amap_api_key
+        )
+        else "amap"
+    )
+    actions = (
+        "mock"
+        if settings.use_mock_actions or mode in {"demo", "hybrid"}
+        else "mock_fallback"
+    )
+    return RuntimeMode(
+        mode=mode,
+        llm=llm,
+        amap=amap,
+        actions=actions,
+    )
 
 
 @app.get(
@@ -79,6 +121,19 @@ def create_plan(request: PlanRequest) -> PlanResponse:
     """Generate and execute a complete mock local-life plan."""
     try:
         return planner.run(request.query, request.location)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/replan/confirm", response_model=PlanResponse)
+def confirm_replan(request: ReplanConfirmRequest) -> PlanResponse:
+    """Apply one explicitly confirmed option to the submitted current plan."""
+    try:
+        return apply_replan(
+            request.current_plan,
+            request.proposal_id,
+            request.option_id,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -149,10 +204,18 @@ def root():
     return {
         "message": "Local Life Agent API is running.",
         "endpoints": [
+            "GET /api/runtime",
             "GET /api/preferences/default",
             "POST /api/preferences",
             "GET /api/preferences/current",
             "POST /api/plan",
             "POST /api/plan/stream",
+            "POST /api/replan/confirm",
         ],
     }
+
+
+@app.get("/settings", include_in_schema=False)
+def settings_page():
+    """Serve the React Router settings page from the production build."""
+    return root()

@@ -29,7 +29,7 @@ class ExecutorAgent:
             PlanEvent(
                 type="progress",
                 stage="reservation_mock",
-                message="正在模拟餐厅预约...",
+                message="正在准备模拟餐厅预约方案...",
                 data={"restaurant": restaurant["name"], "time": meal_step.time},
             ),
         )
@@ -39,7 +39,7 @@ class ExecutorAgent:
             PlanEvent(
                 type="progress",
                 stage="reservation_mock",
-                message="餐厅预约已完成",
+                message="模拟餐厅预约方案已准备",
                 data={
                     "target": reservation.target,
                     "status": reservation.status,
@@ -52,7 +52,7 @@ class ExecutorAgent:
             PlanEvent(
                 type="progress",
                 stage="message_generation",
-                message="正在生成可发送给同行人的消息...",
+                message="正在准备可发送给同行人的消息...",
             ),
         )
         message = build_share_message(intent, plan, reservation)
@@ -63,7 +63,7 @@ class ExecutorAgent:
             PlanEvent(
                 type="progress",
                 stage="message_generation",
-                message="同行消息已生成",
+                message="同行消息草稿已准备",
                 data={"target": delivery.target},
             ),
         )

@@ -2,7 +2,8 @@
 
 import re
 
-from src.config.settings import load_json
+from src.core.result_validator import validate_candidate
+from src.config.settings import current_demo_scenario, load_json
 from src.providers.amap_provider import AmapProvider
 from src.providers.local_commerce_provider import enrich_activity
 from src.schemas.models import PlannedTask, ResolvedLocation, UserIntent
@@ -23,9 +24,21 @@ MOCK_WAIT_MINUTES = {
     "poi_012": 8,
     "poi_013": 6,
     "poi_014": 5,
+    "poi_015": 5,
+    "poi_016": 4,
+    "poi_017": 8,
+    "poi_018": 6,
+    "poi_019": 7,
 }
 
 TASK_QUERIES = {
+    "公园": ["公园", "小花园", "绿地", "体育公园", "滨江步道"],
+    "打台球": ["台球", "桌球", "九球", "台球俱乐部", "自助台球"],
+    "台球": ["台球", "桌球", "九球", "台球俱乐部", "自助台球"],
+    "喝茶": ["茶馆", "茶室", "茶楼", "茶客厅", "茗茶"],
+    "茶馆": ["茶馆", "茶室", "茶楼", "茶客厅", "茗茶"],
+    "爬山": ["爬山", "登山", "森林公园", "郊野公园", "登山步道"],
+    "登山": ["登山", "爬山", "森林公园", "郊野公园", "登山步道"],
     "钓鱼": ["钓鱼", "钓鱼场", "垂钓"],
     "蹦床": ["蹦床馆", "蹦床", "室内蹦床"],
     "酒吧": ["酒吧", "清吧", "小酒馆"],
@@ -81,7 +94,10 @@ def _search_amap(
 ) -> list[dict]:
     candidates: list[dict] = []
     seen: set[str] = set()
+    per_query_limit = 4 if len(queries) > 1 else 8
+    total_limit = 20
     for query in queries[:5]:
+        query_count = 0
         for place in provider.search_poi(
             query,
             city=location.city,
@@ -91,13 +107,12 @@ def _search_amap(
                 continue
             seen.add(place["id"])
             candidate = enrich_activity(place, intent, query)
-            if intent.child_age is not None:
-                min_age, max_age = candidate.get("age_range", [0, 99])
-                if not min_age <= intent.child_age <= max_age:
-                    continue
             candidates.append(candidate)
-            if len(candidates) >= 8:
+            query_count += 1
+            if len(candidates) >= total_limit:
                 return candidates
+            if query_count >= per_query_limit:
+                break
     return candidates
 
 
@@ -133,8 +148,15 @@ def _search_task_mock(
     task: PlannedTask,
 ) -> list[dict]:
     candidates = []
+    allow_scene_fallback = (
+        current_demo_scenario() == "activity_unavailable"
+    )
     for poi in load_json("pois.json").get("pois", []):
-        if intent.scene not in poi.get("suitable_scenes", []):
+        if (
+            task.task_type != "bar_visit"
+            and intent.scene not in poi.get("suitable_scenes", [])
+            and not allow_scene_fallback
+        ):
             continue
         if not _matches_task(poi, task):
             continue
@@ -154,27 +176,10 @@ def _search_task_mock(
 
 
 def _matches_task(poi: dict, task: PlannedTask) -> bool:
-    name = str(poi.get("name", "")).lower()
-    poi_type = str(poi.get("type", "")).lower()
-    tags = {str(tag).lower() for tag in poi.get("tags", [])}
-    if task.task_type == "bar_visit":
-        return (
-            any(word in name or word in poi_type for word in ("酒吧", "清吧", "小酒馆"))
-            or "bar" in tags
-        )
-    if task.task_type == "hotel_search":
-        return (
-            any(word in name or word in poi_type for word in ("酒店", "酒廊"))
-            or "hotel" in tags
-            or "hotel_lounge" in tags
-        )
-
     target = (task.target or "").lower()
     if target in {"休闲活动", "亲子活动"}:
         return True
-    if target == "钓鱼":
-        return "钓鱼" in name or "钓鱼" in poi_type or "fishing" in tags
-    return target in name or target in poi_type or target in tags
+    return validate_candidate(poi, task).is_relevant
 
 
 def _task_queries(task: PlannedTask) -> list[str]:

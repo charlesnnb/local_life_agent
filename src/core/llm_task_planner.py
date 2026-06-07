@@ -4,7 +4,7 @@ import json
 
 from pydantic import ValidationError
 
-from src.core.task_decomposer import decompose_planned_tasks
+from src.core.task_decomposer import apply_task_context, decompose_planned_tasks
 from src.providers.deepseek_provider import DeepSeekProvider
 from src.schemas.models import (
     PlannedTask,
@@ -65,6 +65,7 @@ def plan_tasks(
         return fallback, False, provider.last_error
 
     try:
+        payload = _normalize_task_plan_payload(payload)
         plan = TaskPlan.model_validate(payload)
         plan = _normalize_task_plan(plan, intent)
     except (ValidationError, ValueError) as exc:
@@ -99,6 +100,40 @@ def build_rule_task_plan(query: str, intent: UserIntent) -> TaskPlan:
     )
 
 
+def _normalize_task_plan_payload(payload: dict) -> dict:
+    """Recover obvious task ID shape drift before strict schema validation."""
+    tasks = payload.get("tasks")
+    if not isinstance(tasks, list):
+        return payload
+
+    normalized = dict(payload)
+    normalized_tasks = []
+    for index, task in enumerate(tasks):
+        if not isinstance(task, dict):
+            normalized_tasks.append(task)
+            continue
+        normalized_task = dict(task)
+        normalized_task["task_id"] = _normalize_task_id(
+            normalized_task.get("task_id"),
+            index,
+        )
+        normalized_tasks.append(normalized_task)
+    normalized["tasks"] = normalized_tasks
+    return normalized
+
+
+def _normalize_task_id(value, index: int) -> str:
+    if isinstance(value, int):
+        return f"task_{value}" if value > 0 else f"task_{index + 1}"
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped.isdigit():
+            return f"task_{int(stripped)}"
+        if stripped:
+            return stripped
+    return f"task_{index + 1}"
+
+
 def _normalize_task_plan(
     plan: TaskPlan,
     intent: UserIntent,
@@ -121,6 +156,7 @@ def _normalize_task_plan(
                 priority=index,
             )
         )
+    tasks = apply_task_context(tasks, intent, intent.raw_query)
     time_windows = list(dict.fromkeys(
         task.time_window for task in tasks if task.time_window
     ))

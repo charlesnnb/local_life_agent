@@ -5,12 +5,49 @@ import re
 from src.schemas.models import PlannedTask, UserIntent, UserTask
 
 
-TIME_WINDOWS = ("早上", "上午", "中午", "下午", "傍晚", "晚上", "周末")
-ORDER_WORDS = ("叫一份", "来一份", "叫个", "外卖", "点", "订")
+TIME_WINDOWS = (
+    "早上",
+    "上午",
+    "中午",
+    "下午",
+    "傍晚",
+    "晚上",
+    "夜宵",
+    "周末",
+)
+ORDER_WORDS = (
+    "叫一份",
+    "来一份",
+    "叫个",
+    "点个",
+    "点一份",
+    "点",
+    "外卖",
+    "点餐",
+    "订",
+)
 FOOD_BRANDS = ("麦当劳", "肯德基", "汉堡王", "必胜客")
-ACTIVITIES = ("钓鱼", "打球", "看展", "citywalk", "逛街")
+ACTIVITIES = (
+    "游乐场",
+    "儿童乐园",
+    "亲子乐园",
+    "公园",
+    "打台球",
+    "台球",
+    "桌球",
+    "喝茶",
+    "茶馆",
+    "茶室",
+    "钓鱼",
+    "打球",
+    "看展",
+    "citywalk",
+    "逛街",
+)
 BAR_WORDS = ("小酒馆", "清吧", "酒吧")
+BEVERAGE_BRANDS = ("霸王茶姬",)
 DELIVERY_TARGETS = (
+    *BEVERAGE_BRANDS,
     "麦当劳",
     "肯德基",
     "汉堡王",
@@ -24,15 +61,24 @@ DELIVERY_TARGETS = (
     "晚饭",
 )
 PLANNED_ACTIVITIES = (
+    ("游乐场", "亲子乐园 儿童乐园 游乐场"),
+    ("儿童乐园", "亲子乐园 儿童乐园 游乐场"),
+    ("亲子乐园", "亲子乐园 儿童乐园 游乐场"),
+    ("公园", "公园 小花园 绿地 体育公园 滨江步道"),
+    ("打台球", "台球 桌球 九球 台球俱乐部 自助台球"),
+    ("喝茶", "茶馆 茶室 茶楼 茶客厅 茗茶"),
+    ("爬山", "爬山 登山 森林公园 郊野公园 登山步道"),
     ("蹦床", "蹦床馆"),
     ("钓鱼", "钓鱼场 垂钓"),
     ("打球", "体育馆 球场"),
     ("看展", "展览 美术馆"),
+    ("展览", "展览 美术馆"),
     ("citywalk", "城市漫步 街区"),
     ("逛街", "商场 购物中心"),
 )
 HOTEL_WORDS = ("五星级酒店", "高档酒店", "酒店酒廊", "酒店")
 RESTAURANT_WORDS = ("餐厅", "吃饭", "用餐", "晚餐", "午餐")
+CUISINES = ("川菜", "粤菜", "湘菜", "日料", "火锅", "烧烤")
 
 
 def decompose_tasks(query: str, intent: UserIntent) -> list[UserTask]:
@@ -81,6 +127,10 @@ def decompose_planned_tasks(
     if (
         tasks
         and not any(task.task_type == "restaurant_search" for task in tasks)
+        and not any(
+            task.task_type in {"bar_visit", "hotel_search"}
+            for task in tasks
+        )
         and _should_infer_meal(query, intent)
     ):
         meal_window = "晚上" if "下午" in active_window else active_window
@@ -97,7 +147,28 @@ def decompose_planned_tasks(
             )
         )
 
-    return _deduplicate_planned_tasks(tasks)
+    return apply_task_context(
+        _deduplicate_planned_tasks(tasks),
+        intent,
+        query,
+    )
+
+
+def apply_task_context(
+    tasks: list[PlannedTask],
+    intent: UserIntent,
+    query: str,
+) -> list[PlannedTask]:
+    """Attach companions and constraints to the clause that owns each task."""
+    clauses = [
+        part.strip()
+        for part in re.split(r"[，,。；;]", query)
+        if part.strip()
+    ]
+    return [
+        _with_task_context(task, intent, clauses)
+        for task in tasks
+    ]
 
 
 def _task_from_clause(
@@ -105,19 +176,24 @@ def _task_from_clause(
     time_window: str,
     task_index: int,
 ) -> UserTask | None:
-    brand = _first_match(clause, FOOD_BRANDS)
-    if brand and any(word in clause for word in ORDER_WORDS):
+    delivery_target = _delivery_target(clause)
+    if delivery_target and _is_delivery_clause(clause):
         return _task(
             task_index,
             time_window,
             "food_order",
-            brand,
+            delivery_target,
             clause,
         )
 
     activity = _first_match(clause.lower(), ACTIVITIES)
     if activity:
-        target = "citywalk" if activity == "citywalk" else activity
+        target = {
+            "台球": "打台球",
+            "桌球": "打台球",
+            "茶馆": "喝茶",
+            "茶室": "喝茶",
+        }.get(activity, activity)
         return _task(
             task_index,
             time_window,
@@ -135,6 +211,15 @@ def _task_from_clause(
             "酒吧",
             clause,
         )
+    brand = _first_match(clause, BEVERAGE_BRANDS)
+    if brand:
+        return _task(
+            task_index,
+            time_window,
+            "activity_search",
+            brand,
+            clause,
+        )
     return None
 
 
@@ -144,8 +229,8 @@ def _planned_tasks_from_clause(
     start_index: int,
 ) -> list[PlannedTask]:
     tasks: list[PlannedTask] = []
-    delivery = _first_match(clause, DELIVERY_TARGETS)
-    if delivery and any(word in clause for word in ORDER_WORDS):
+    delivery = _delivery_target(clause)
+    if delivery and _is_delivery_clause(clause):
         tasks.append(
             _planned_task(
                 start_index + len(tasks),
@@ -172,6 +257,21 @@ def _planned_tasks_from_clause(
                 "amap_poi_tool",
                 True,
                 f"{time_window}找一个可以{target}的地方",
+            )
+        )
+
+    brand = _first_match(clause, BEVERAGE_BRANDS)
+    if brand and not _is_delivery_clause(clause):
+        tasks.append(
+            _planned_task(
+                start_index + len(tasks),
+                time_window,
+                "poi_search",
+                brand,
+                f"{brand} 茶饮 奶茶",
+                "amap_poi_tool",
+                True,
+                f"{time_window}安排{brand}茶饮",
             )
         )
 
@@ -205,18 +305,24 @@ def _planned_tasks_from_clause(
             )
         )
 
-    if (
-        not tasks
-        and any(word in clause for word in RESTAURANT_WORDS)
-        and not any(word in clause for word in ORDER_WORDS)
-    ):
+    cuisine = _first_match(clause, CUISINES)
+    wants_restaurant = (
+        any(word in clause for word in RESTAURANT_WORDS)
+        or cuisine is not None
+    )
+    if wants_restaurant and not _is_delivery_clause(clause):
+        search_terms = [cuisine or "附近餐厅"]
+        if any(word in clause for word in ("预算别太高", "别太贵", "便宜", "实惠")):
+            search_terms.append("平价")
+        if any(word in clause for word in ("不想排队", "不要排队", "别排队")):
+            search_terms.append("不排队")
         tasks.append(
             _planned_task(
-                start_index,
+                start_index + len(tasks),
                 time_window,
                 "restaurant_search",
-                "餐厅",
-                "附近餐厅",
+                cuisine or "餐厅",
+                " ".join(search_terms),
                 "restaurant_tool",
                 True,
                 f"{time_window}找一家餐厅用餐",
@@ -319,6 +425,36 @@ def _first_match(text: str, candidates: tuple[str, ...]) -> str | None:
     return min(matches)[1] if matches else None
 
 
+def _delivery_target(clause: str) -> str | None:
+    known = _first_match(clause, DELIVERY_TARGETS)
+    if known:
+        return known
+    if not _is_delivery_clause(clause):
+        return None
+    patterns = (
+        r"(?:外卖吃|点个外卖吃|点一份|点个|点餐|叫一份|来一份|吃个)"
+        r"\s*([^，,。；;]+?)(?:吧)?$",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, clause)
+        if match:
+            target = match.group(1).strip()
+            if target:
+                return target
+    return None
+
+
+def _is_delivery_clause(clause: str) -> bool:
+    return (
+        "外卖" in clause
+        or any(word in clause for word in ORDER_WORDS)
+        or (
+            "夜宵" in clause
+            and any(word in clause for word in ("吃个", "吃份", "来份"))
+        )
+    )
+
+
 def _period_only(value: str) -> str:
     return _first_window(value) or value or "未指定"
 
@@ -352,6 +488,75 @@ def _deduplicate_planned_tasks(
             )
         )
     return unique
+
+
+def _with_task_context(
+    task: PlannedTask,
+    intent: UserIntent,
+    clauses: list[str],
+) -> PlannedTask:
+    clause = _task_clause(task, clauses)
+    explicit_companions = [
+        companion
+        for companion in intent.companions
+        if _companion_in_text(companion, clause)
+    ]
+    has_child = "孩子" in explicit_companions or any(
+        word in clause for word in ("亲子", "小孩", "宝宝", "女儿", "儿子")
+    )
+    constraints = list(task.constraints)
+
+    if task.task_type == "bar_visit":
+        if has_child:
+            companions = explicit_companions or ["孩子"]
+            child_age = intent.child_age
+            constraints.append(
+                "儿童同行酒吧场景需确认，建议改选家庭友好夜间场所。"
+            )
+        else:
+            companions = ["adult"]
+            child_age = None
+            if intent.scene == "family":
+                constraints.append(
+                    "晚间酒吧按成人场景规划，默认儿童不同行。"
+                )
+    else:
+        companions = explicit_companions
+        child_age = intent.child_age if has_child else None
+
+    return task.model_copy(
+        update={
+            "companions": list(dict.fromkeys(companions)),
+            "child_age": child_age,
+            "constraints": list(dict.fromkeys(constraints)),
+        }
+    )
+
+
+def _task_clause(task: PlannedTask, clauses: list[str]) -> str:
+    terms = [
+        term
+        for term in (
+            task.target,
+            "酒吧" if task.task_type == "bar_visit" else None,
+            "酒店" if task.task_type == "hotel_search" else None,
+        )
+        if term
+    ]
+    for clause in clauses:
+        if any(term.lower() in clause.lower() for term in terms):
+            return clause
+    return task.description
+
+
+def _companion_in_text(companion: str, text: str) -> bool:
+    aliases = {
+        "老婆": ("老婆", "妻子", "媳妇"),
+        "老公": ("老公", "丈夫"),
+        "孩子": ("孩子", "小孩", "宝宝", "女儿", "儿子"),
+        "朋友": ("朋友", "哥们", "闺蜜", "同事"),
+    }
+    return any(alias in text for alias in aliases.get(companion, (companion,)))
 
 
 def _duplicates_previous(task: UserTask, tasks: list[UserTask]) -> bool:

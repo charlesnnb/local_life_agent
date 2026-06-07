@@ -21,6 +21,9 @@ export interface UserTask {
   route_needed: boolean;
   description: string;
   priority: number;
+  companions: string[];
+  child_age: number | null;
+  constraints: string[];
 }
 
 export interface TaskPlan {
@@ -99,9 +102,54 @@ export interface PlanStep {
 export interface ActionResult {
   type: 'reservation' | 'send_message' | 'food_order';
   target: string;
-  status: 'mock_success' | 'mock_failed';
+  status: 'mock_success' | 'mock_failed' | 'success' | 'failed' | 'pending';
   message: string | null;
   details: Record<string, unknown>;
+}
+
+export interface RuntimeMode {
+  mode: 'demo' | 'hybrid' | 'live';
+  llm: 'mock' | 'deepseek';
+  amap: 'mock' | 'amap';
+  actions: 'mock' | 'mock_fallback' | 'live';
+}
+
+export interface PlanException {
+  exception_id: string;
+  exception_type: string;
+  source_task_id: string | null;
+  severity: string;
+  title: string;
+  message: string;
+  impact: Record<string, unknown>;
+  status: string;
+}
+
+export interface ReplanOption {
+  option_id: string;
+  title: string;
+  description: string;
+  changes: string[];
+  estimated_delay_minutes: number;
+  estimated_saved_minutes: number;
+  replacement_place: Record<string, unknown> | null;
+  operation:
+    | 'replace_restaurant'
+    | 'replace_activity'
+    | 'adjust_reservation'
+    | 'keep_original';
+  original_plan: Record<string, unknown>;
+  proposed_plan: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+}
+
+export interface ReplanProposal {
+  proposal_id: string;
+  exception: PlanException;
+  options: ReplanOption[];
+  requires_consent: boolean;
+  status: 'pending' | 'accepted' | 'kept';
+  selected_option_id: string | null;
 }
 
 export interface RoutePlan {
@@ -111,7 +159,17 @@ export interface RoutePlan {
     lng: number;
   };
   stops: Array<{
-    type: 'activity' | 'restaurant' | 'bar' | 'hotel';
+    type:
+      | 'activity'
+      | 'restaurant'
+      | 'bar'
+      | 'hotel'
+      | 'food_delivery'
+      | 'food_order'
+      | 'order'
+      | 'takeout';
+    category: string;
+    label: string;
     name: string;
     lat: number;
     lng: number;
@@ -123,7 +181,7 @@ export interface RoutePlan {
   total_travel_minutes: number;
   transport: string;
   source: string;
-  polyline: number[][];
+  polyline: Array<[number, number] | { lng: number; lat: number }>;
 }
 
 export interface TimelineItem {
@@ -138,6 +196,7 @@ export interface TimelineItem {
     | 'food_order'
     | 'delivery'
     | 'break'
+    | 'free_time'
     | 'return'
     | 'arrival';
   title: string;
@@ -173,6 +232,8 @@ export interface PlanResponse {
     share_message: string;
   } | null;
   planning_warnings: string[];
+  exceptions: PlanException[];
+  replan_proposals: ReplanProposal[];
   natural_language: string;
 }
 
@@ -197,8 +258,28 @@ export async function createPlan(query: string): Promise<PlanResponse> {
   return response.json();
 }
 
+export async function confirmReplan(
+  currentPlan: PlanResponse,
+  proposalId: string,
+  optionId: string,
+): Promise<PlanResponse> {
+  return requestJson('/api/replan/confirm', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      current_plan: currentPlan,
+      proposal_id: proposalId,
+      option_id: optionId,
+    }),
+  });
+}
+
 export async function getDefaultPreferences(): Promise<PreferenceSetupData> {
   return requestJson('/api/preferences/default');
+}
+
+export async function getRuntimeMode(): Promise<RuntimeMode> {
+  return requestJson('/api/runtime');
 }
 
 export async function getCurrentPreferences(): Promise<PreferenceProfile> {

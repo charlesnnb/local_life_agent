@@ -105,6 +105,76 @@ def test_deepseek_valid_task_plan_is_primary():
     assert plan.tasks[0].target == "酒店酒廊"
 
 
+def test_deepseek_numeric_task_ids_are_normalized_and_tasks_preserved():
+    def handler(_request):
+        content = {
+            "scene": "family",
+            "mood": "normal",
+            "time_windows": ["今天下午"],
+            "tasks": [
+                {
+                    "task_id": 1,
+                    "time_window": "今天下午",
+                    "task_type": "poi_search",
+                    "target": "游乐场",
+                    "search_query": "附近适合孩子的游乐场",
+                    "tool_name": "amap_poi_tool",
+                    "route_needed": True,
+                    "description": "找附近适合孩子的游乐场",
+                },
+                {
+                    "task_id": "2",
+                    "time_window": "今天下午",
+                    "task_type": "restaurant_search",
+                    "target": "川菜",
+                    "search_query": "附近川菜馆",
+                    "tool_name": "restaurant_tool",
+                    "route_needed": True,
+                    "description": "找附近的川菜馆",
+                },
+                {
+                    "time_window": "今天下午",
+                    "task_type": "food_delivery",
+                    "target": "霸王茶姬",
+                    "search_query": "霸王茶姬",
+                    "tool_name": "food_order_tool",
+                    "route_needed": False,
+                    "description": "点霸王茶姬外卖",
+                },
+            ],
+            "constraints": {"avoid": ["太远"], "preference": ["顺路"]},
+        }
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {"message": {"content": json.dumps(content, ensure_ascii=False)}}
+                ]
+            },
+        )
+
+    query = "今天下午带孩子找个游乐场，川菜，霸王茶姬，别太远"
+    plan, used_llm, error = plan_tasks(
+        query,
+        parse_intent(query),
+        get_current_profile(),
+        _provider(handler),
+    )
+
+    assert used_llm is True
+    assert error is None
+    assert [task.task_id for task in plan.tasks] == [
+        "task_1",
+        "task_2",
+        "task_3",
+    ]
+    assert [task.target for task in plan.tasks] == [
+        "游乐场",
+        "川菜",
+        "霸王茶姬",
+    ]
+
+
 def test_invalid_deepseek_json_uses_rule_fallback_without_dropping_tasks():
     def handler(_request):
         return httpx.Response(
@@ -145,3 +215,27 @@ def test_generic_legacy_demo_gets_task_contract_from_fallback():
     ]
     assert plan.tasks[0].route_needed is True
     assert plan.tasks[1].tool_name == "restaurant_tool"
+
+
+def test_rule_fallback_recognizes_explicit_playground_cuisine_and_brand():
+    query = "今天下午带孩子找个游乐场，川菜，霸王茶姬，别太远"
+
+    plan, used_llm, error = plan_tasks(
+        query,
+        parse_intent(query),
+        get_current_profile(),
+        DeepSeekProvider(enabled=False),
+    )
+
+    assert used_llm is False
+    assert error == "DeepSeek 未启用"
+    assert [task.target for task in plan.tasks] == [
+        "游乐场",
+        "川菜",
+        "霸王茶姬",
+    ]
+    assert [task.task_type for task in plan.tasks] == [
+        "poi_search",
+        "restaurant_search",
+        "poi_search",
+    ]

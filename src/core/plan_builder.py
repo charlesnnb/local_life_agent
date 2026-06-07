@@ -56,6 +56,22 @@ def build_plan(
             place=restaurant["name"],
             description=f"路程约 {poi_to_restaurant.duration_min} 分钟，预留缓冲后用餐。",
         ),
+        *(
+            [
+                PlanStep(
+                    time=_format_time(schedule["restaurant_arrival"]),
+                    action="到达餐厅",
+                    place=restaurant["name"],
+                    description=(
+                        f"到达餐厅，距离用餐开始还有 "
+                        f"{schedule['meal_wait_minutes']} 分钟。"
+                    ),
+                    source=restaurant.get("source", "mock"),
+                )
+            ]
+            if schedule["meal_wait_minutes"] > 0
+            else []
+        ),
         PlanStep(
             time=_format_time(schedule["meal_start"]),
             action="晚餐",
@@ -112,6 +128,40 @@ def build_timeline(
         restaurant_to_home,
     )
     restaurant_reason = _restaurant_reason(intent, restaurant)
+    restaurant_items = [
+        TimelineItem(
+            time=_format_time(schedule["restaurant_arrival"]),
+            type="restaurant",
+            title=(
+                f"到达{restaurant['name']}"
+                if schedule["meal_wait_minutes"] > 0
+                else f"到达并开始在{restaurant['name']}用餐"
+            ),
+            description=(
+                "已到达餐厅，等待用餐开始。"
+                if schedule["meal_wait_minutes"] > 0
+                else restaurant_reason
+            ),
+        )
+    ]
+    if schedule["meal_wait_minutes"] > 0:
+        restaurant_items.extend([
+            TimelineItem(
+                time=_format_time(schedule["restaurant_arrival"]),
+                type="break",
+                title="等待 / 休息",
+                description=(
+                    f"距离 {_format_time(schedule['meal_start'])} 开始用餐还有约 "
+                    f"{schedule['meal_wait_minutes']} 分钟，可休息或提前取号。"
+                ),
+            ),
+            TimelineItem(
+                time=_format_time(schedule["meal_start"]),
+                type="restaurant",
+                title=f"开始在{restaurant['name']}用餐",
+                description=restaurant_reason,
+            ),
+        ])
     return Timeline(
         items=[
             TimelineItem(
@@ -135,12 +185,7 @@ def build_timeline(
                 title=f"前往{restaurant['name']}",
                 description=f"预计通勤 {poi_to_restaurant.duration_min} 分钟",
             ),
-            TimelineItem(
-                time=_format_time(schedule["meal_start"]),
-                type="restaurant",
-                title=f"在{restaurant['name']}用餐",
-                description=restaurant_reason,
-            ),
+            *restaurant_items,
             TimelineItem(
                 time=_format_time(schedule["meal_end"]),
                 type="return",
@@ -174,6 +219,7 @@ def _build_schedule(
     activity_end = activity_start + activity_duration
     restaurant_arrival = activity_end + poi_to_restaurant.duration_min
     meal_start = max(restaurant_arrival, start + 150)
+    meal_wait_minutes = max(0, meal_start - restaurant_arrival)
     meal_end = meal_start + 70
     home_arrival = meal_end + restaurant_to_home.duration_min
     return {
@@ -181,7 +227,9 @@ def _build_schedule(
         "activity_start": activity_start,
         "activity_duration": activity_duration,
         "activity_end": activity_end,
+        "restaurant_arrival": restaurant_arrival,
         "meal_start": meal_start,
+        "meal_wait_minutes": meal_wait_minutes,
         "meal_end": meal_end,
         "home_arrival": home_arrival,
         "total_duration_minutes": home_arrival - start,

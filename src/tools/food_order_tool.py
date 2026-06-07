@@ -1,5 +1,6 @@
 """Mock food ordering for multi-stage plans."""
 
+from src.config.settings import settings
 from src.schemas.models import ActionResult
 
 
@@ -21,9 +22,16 @@ def order_food(
         details={
             "tool_name": "food_order_tool",
             "action": "order_food",
+            "execution_source": _execution_source(),
             "brand": brand,
             "time_window": time_window,
             "location": location,
             "estimated_delivery_minutes": estimated_delivery_minutes,
         },
     )
+
+
+def _execution_source() -> str:
+    if settings.run_mode == "live" and not settings.use_mock_actions:
+        return "mock_fallback"
+    return "mock"

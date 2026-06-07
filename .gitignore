@@ -1,5 +1,14 @@
-# 环境变量 (包含敏感信息)
+# Environment files (sensitive)
 .env
+.env.local
+.env.*.local
+.env.hybrid
+.env.live
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+frontend/.env.hybrid
+frontend/.env.live
 
 # Python
 __pycache__/
@@ -8,12 +17,26 @@ __pycache__/
 .venv/
 venv/
 *.egg
+.coverage
+htmlcov/
 
 # pytest
 .pytest_cache/
 
 # Node
 node_modules/
+frontend/dist/
+frontend/.vite/
+*.tsbuildinfo
+
+# Local runtime artifacts
+*.log
+*.tmp
+*.bak
+*.out
+debug*.json
+response_dump*.json
+test_output*.txt
 
 # IDE
 .vscode/
@@ -25,3 +48,4 @@ Thumbs.db
 
 # Claude
 .claude/
+.superpowers/

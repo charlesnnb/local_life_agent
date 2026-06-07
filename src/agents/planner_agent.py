@@ -5,6 +5,7 @@ from collections.abc import Callable
 
 from src.agents.executor_agent import ExecutorAgent
 from src.core.decision_explainer import explain_decision
+from src.core.exception_detector import detect_exceptions
 from src.core.final_composer import compose_final_copy
 from src.core.itinerary_composer import compose_itinerary
 from src.core.itinerary_builder import build_multistep_itinerary
@@ -13,6 +14,7 @@ from src.core.llm_task_planner import plan_tasks
 from src.core.plan_builder import build_plan, build_timeline
 from src.core.query_planner import build_query_plan
 from src.core.ranking import rank_pois, rank_restaurants
+from src.core.replan_service import build_replan_proposals
 from src.providers.amap_provider import AmapProvider
 from src.providers.deepseek_provider import DeepSeekProvider
 from src.schemas.models import (
@@ -28,6 +30,7 @@ from src.services.preference_service import (
     build_preference_explanation,
     get_current_profile,
 )
+from src.config.settings import current_demo_scenario
 from src.tools.message_tool import (
     build_multistep_message,
     build_task_plan_message,
@@ -76,8 +79,26 @@ class PlannerAgent:
         emit = lambda event: _emit_safely(event_callback, event)
         profile = get_current_profile()
 
+        if getattr(self.deepseek, "demo_mode", False):
+            emit(_event(
+                "api_fallback_triggered",
+                "Demo Mode：使用本地 Mock Planner",
+                source="mock",
+            ))
+        if getattr(self.amap, "demo_mode", False):
+            emit(_event(
+                "api_fallback_triggered",
+                "Demo Mode：使用本地 Mock POI",
+                source="mock",
+            ))
+            emit(_event(
+                "api_fallback_triggered",
+                "Demo Mode：使用 Mock Route",
+                source="mock",
+            ))
+
         emit(_event("intent_parsing", "正在理解你的需求..."))
-        if self.deepseek.enabled:
+        if self.deepseek.is_available:
             emit(_event(
                 "llm_intent_started",
                 "正在用 DeepSeek 理解你的需求...",
@@ -88,7 +109,7 @@ class PlannerAgent:
             profile,
             self.deepseek,
         )
-        if self.deepseek.enabled:
+        if self.deepseek.is_available:
             if llm_intent_used:
                 emit(_event(
                     "llm_intent_finished",
@@ -114,7 +135,7 @@ class PlannerAgent:
                 "source": "deepseek" if llm_intent_used else "rule",
             },
         ))
-        if self.deepseek.enabled:
+        if self.deepseek.is_available:
             emit(_event(
                 "llm_task_planning_started",
                 "正在用 DeepSeek 拆解有序任务...",
@@ -126,7 +147,7 @@ class PlannerAgent:
             profile,
             self.deepseek,
         )
-        if self.deepseek.enabled:
+        if self.deepseek.is_available:
             if task_llm_used:
                 emit(_event(
                     "llm_task_planning_finished",
@@ -588,6 +609,7 @@ class PlannerAgent:
             intent,
             location,
             event_callback=emit,
+            profile=profile,
         )
 
         emit(_event(
@@ -623,7 +645,11 @@ class PlannerAgent:
             if action.type == "reservation":
                 emit(_event(
                     "reservation_mock",
-                    "餐厅预约已完成",
+                    (
+                        "餐厅模拟预约失败"
+                        if action.status == "mock_failed"
+                        else "餐厅模拟预约方案已准备"
+                    ),
                     source="mock",
                     data={
                         "target": action.target,
@@ -685,6 +711,11 @@ class PlannerAgent:
             composition=composition,
             planning_warnings=itinerary.warnings,
             natural_language=natural_language,
+        )
+        _attach_exception_replans(
+            response,
+            tool_results,
+            emit,
         )
         emit(_event(
             "itinerary_composing",
@@ -929,6 +960,64 @@ def _uses_source(candidates: list[dict], source: str) -> bool:
     return bool(candidates) and all(
         item.get("source") == source for item in candidates
     )
+
+
+def _attach_exception_replans(
+    response: PlanResponse,
+    tool_results,
+    emit: Callable[[PlanEvent], None],
+) -> None:
+    """Attach pending consent proposals after the original plan is complete."""
+    scenario = current_demo_scenario()
+    exceptions = detect_exceptions(
+        response,
+        tool_results,
+        scenario=scenario,
+    )
+    if not exceptions:
+        return
+    response.exceptions = exceptions
+    for exception in exceptions:
+        emit(_event(
+            "exception_detected",
+            f"检测到：{exception.title}",
+            source="mock",
+            data={
+                "exception_id": exception.exception_id,
+                "exception_type": exception.exception_type,
+            },
+        ))
+        emit(_event(
+            "replan_search",
+            _replan_search_message(exception.exception_type),
+            source="mock",
+            data={"exception_id": exception.exception_id},
+        ))
+    response.replan_proposals = build_replan_proposals(
+        response,
+        exceptions,
+        tool_results,
+    )
+    emit(_event(
+        "replan_pending",
+        (
+            f"已生成 {sum(len(item.options) for item in response.replan_proposals)} "
+            "个处理选项，等待你的确认"
+        ),
+        source="mock",
+        data={
+            "proposal_count": len(response.replan_proposals),
+            "requires_consent": True,
+        },
+    ))
+
+
+def _replan_search_message(exception_type: str) -> str:
+    if exception_type == "restaurant_full":
+        return "正在寻找附近低等待餐厅"
+    if exception_type == "activity_unavailable":
+        return "正在寻找同类别可用活动"
+    return "正在生成调整预约与更换餐厅方案"
 
 
 def _format_intent_summary(intent: UserIntent) -> str:

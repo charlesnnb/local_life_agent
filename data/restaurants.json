@@ -179,6 +179,25 @@
       "has_private_room": false,
       "queue_sensitive": false,
       "reservation_supported": true
+    },
+    {
+      "restaurant_id": "r_011",
+      "name": "海底捞徐家汇店",
+      "type": "火锅",
+      "district": "徐汇区",
+      "lat": 31.2030,
+      "lng": 121.4600,
+      "tags": ["火锅", "hotpot", "group", "social", "family_friendly", "low_wait"],
+      "suitable_scenes": ["solo", "friends", "couple", "family"],
+      "avg_price": 125,
+      "rating": 4.2,
+      "open_time": "11:00",
+      "close_time": "23:30",
+      "has_low_fat_meal": false,
+      "has_kids_meal": true,
+      "has_private_room": false,
+      "queue_sensitive": true,
+      "reservation_supported": true
     }
   ]
 }

@@ -1,6 +1,7 @@
 """Priority 1 coverage for structured intent and constraint parsing."""
 
 from src.core.intent_parser import parse_intent
+from src.core.task_decomposer import decompose_planned_tasks
 
 
 def test_family_child_and_diet_constraints():
@@ -57,3 +58,24 @@ def test_weekend_rain_indoor_constraints():
     assert intent.weather_constraint == "rain"
     assert {"室内", "逛逛", "吃饭"} <= set(intent.activity_preferences)
     assert "户外" in intent.avoid
+
+
+def test_citywalk_with_cuisine_creates_activity_and_restaurant_tasks():
+    intent = parse_intent(
+        "今天下午想和朋友去 citywalk 然后吃川菜，"
+        "预算别太高，不想排队太久"
+    )
+
+    assert intent.scene == "friends"
+    assert intent.budget_preference == "not_expensive"
+    assert "排队" in intent.avoid
+    assert "citywalk" in intent.activity_preferences
+    assert "川菜" in intent.diet_preferences
+
+    tasks = decompose_planned_tasks(intent.raw_query, intent)
+    assert [task.task_type for task in tasks] == [
+        "poi_search",
+        "restaurant_search",
+    ]
+    assert "citywalk" in tasks[0].target.lower()
+    assert "川菜" in tasks[1].search_query

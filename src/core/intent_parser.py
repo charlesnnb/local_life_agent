@@ -6,6 +6,19 @@ from src.schemas.models import UserIntent
 
 
 KNOWN_CITIES = ["上海", "北京", "广州", "深圳", "杭州"]
+CHINESE_NUMBERS = {
+    "一": 1,
+    "二": 2,
+    "两": 2,
+    "三": 3,
+    "四": 4,
+    "五": 5,
+    "六": 6,
+    "七": 7,
+    "八": 8,
+    "九": 9,
+    "十": 10,
+}
 
 
 def parse_intent(query: str) -> UserIntent:
@@ -14,7 +27,14 @@ def parse_intent(query: str) -> UserIntent:
     companions = _parse_companions(normalized)
     child_age = _parse_child_age(normalized)
     gender_mix = _parse_gender_mix(normalized)
-    scene = _parse_scene(normalized, companions, child_age)
+    explicit_party_size = _parse_explicit_party_size(normalized)
+    scene = _parse_scene(
+        normalized,
+        companions,
+        child_age,
+        gender_mix,
+        explicit_party_size,
+    )
 
     distance_preference = _parse_distance_preference(normalized)
     weather_constraint = _parse_weather_constraint(normalized)
@@ -33,7 +53,13 @@ def parse_intent(query: str) -> UserIntent:
         time_window=_parse_time_window(normalized),
         duration_hours=_parse_duration_hours(normalized),
         companions=companions,
-        party_size=_parse_party_size(normalized, scene, companions, gender_mix),
+        party_size=_parse_party_size(
+            normalized,
+            scene,
+            companions,
+            gender_mix,
+            explicit_party_size,
+        ),
         child_age=child_age,
         gender_mix=gender_mix,
         distance_preference=distance_preference,
@@ -58,7 +84,7 @@ def _parse_companions(query: str) -> list[str]:
         ("老婆", ["老婆", "妻子", "媳妇"]),
         ("老公", ["老公", "丈夫"]),
         ("孩子", ["孩子", "小孩", "宝宝", "女儿", "儿子"]),
-        ("朋友", ["朋友", "哥们", "闺蜜", "同事"]),
+        ("朋友", ["朋友", "哥们", "闺蜜", "同事", "同学"]),
     ]
     return [
         label
@@ -80,28 +106,51 @@ def _parse_child_age(query: str) -> int | None:
 
 
 def _parse_gender_mix(query: str) -> dict[str, int] | None:
-    match = re.search(r"(\d+)\s*男\s*(\d+)\s*女", query)
-    if not match:
-        match = re.search(r"(\d+)\s*个?男(?:生)?\s*(\d+)\s*个?女(?:生)?", query)
+    number = r"(\d+|[一二两三四五六七八九十])"
+    match = re.search(
+        rf"{number}\s*个?男(?:生)?\s*{number}\s*个?女(?:生)?",
+        query,
+    )
     if not match:
         return None
-    return {"male": int(match.group(1)), "female": int(match.group(2))}
+    return {
+        "male": _number_value(match.group(1)),
+        "female": _number_value(match.group(2)),
+    }
 
 
 def _parse_scene(
     query: str,
     companions: list[str],
     child_age: int | None,
+    gender_mix: dict[str, int] | None,
+    explicit_party_size: int | None,
 ) -> str:
     if "孩子" in companions or child_age is not None or "亲子" in query:
         return "family"
-    if "朋友" in companions or any(word in query for word in ["聚会", "组局", "朋友局"]):
-        return "friends"
     if (
         any(person in companions for person in ["老婆", "老公"])
         or any(word in query for word in ["约会", "情侣", "二人世界"])
     ):
         return "couple"
+    group_signals = [
+        "我们",
+        "一起",
+        "几个人",
+        "朋友",
+        "同学",
+        "同事",
+        "聚会",
+        "组局",
+        "朋友局",
+    ]
+    if (
+        "朋友" in companions
+        or gender_mix is not None
+        or (explicit_party_size is not None and explicit_party_size >= 3)
+        or any(word in query for word in group_signals)
+    ):
+        return "friends"
     return "solo"
 
 
@@ -148,16 +197,10 @@ def _parse_party_size(
     scene: str,
     companions: list[str],
     gender_mix: dict[str, int] | None,
+    explicit_party_size: int | None,
 ) -> int:
-    explicit_patterns = [
-        r"和\s*(\d+)\s*个?(?:朋友|人)",
-        r"(\d+)\s*个?(?:朋友|人)",
-    ]
-    for pattern in explicit_patterns:
-        match = re.search(pattern, query)
-        if match:
-            return int(match.group(1))
-
+    if explicit_party_size is not None:
+        return explicit_party_size
     if gender_mix:
         return gender_mix["male"] + gender_mix["female"]
     if scene == "family":
@@ -167,6 +210,23 @@ def _parse_party_size(
     if scene == "friends":
         return 4
     return 1
+
+
+def _parse_explicit_party_size(query: str) -> int | None:
+    number = r"(\d+|[一二两三四五六七八九十])"
+    patterns = [
+        rf"和\s*{number}\s*个?(?:朋友|同学|同事|人)",
+        rf"{number}\s*个?(?:朋友|同学|同事|人)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, query)
+        if match:
+            return _number_value(match.group(1))
+    return None
+
+
+def _number_value(value: str) -> int:
+    return int(value) if value.isdigit() else CHINESE_NUMBERS[value]
 
 
 def _parse_distance_preference(query: str) -> str:
@@ -191,6 +251,7 @@ def _parse_activity_preferences(
         ("散步", ["散步", "走走"]),
         ("室内", ["室内"]),
         ("逛逛", ["逛逛", "逛街", "逛一逛"]),
+        ("citywalk", ["citywalk", "Citywalk", "城市漫步"]),
         ("轻松", ["轻松", "休闲", "不累", "别太累"]),
         ("亲子", ["亲子"]),
     ]
@@ -221,11 +282,22 @@ def _parse_diet_preferences(query: str) -> list[str]:
             preferences.append("低油")
     if any(word in query for word in ["素食", "吃素"]):
         preferences.append("素食")
+    for cuisine in ["川菜", "粤菜", "湘菜", "日料", "火锅", "烧烤"]:
+        if cuisine in query:
+            preferences.append(cuisine)
     return _unique(preferences)
 
 
 def _parse_budget_preference(query: str) -> str:
-    if any(word in query for word in ["别太贵", "不贵", "便宜", "实惠", "预算有限"]):
+    if any(word in query for word in [
+        "别太贵",
+        "不贵",
+        "便宜",
+        "实惠",
+        "预算有限",
+        "预算别太高",
+        "预算不要太高",
+    ]):
         return "not_expensive"
     if any(word in query for word in ["预算无所谓", "价格无所谓", "贵一点也行"]):
         return "flexible"

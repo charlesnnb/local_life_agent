@@ -23,6 +23,13 @@ class AmapProvider:
         client: httpx.Client | None = None,
         runtime_settings: Settings = settings,
     ):
+        self.demo_mode = (
+            runtime_settings.run_mode == "demo"
+            or runtime_settings.demo_mode
+        )
+        self.force_mock = (
+            self.demo_mode or runtime_settings.use_mock_amap
+        )
         self.enabled = (
             runtime_settings.enable_amap if enabled is None else enabled
         )
@@ -42,10 +49,14 @@ class AmapProvider:
 
     @property
     def is_available(self) -> bool:
-        return self.enabled and bool(self.api_key)
+        return not self.force_mock and self.enabled and bool(self.api_key)
 
     @property
     def unavailable_reason(self) -> str | None:
+        if self.demo_mode:
+            return "Demo Mode：使用本地 Mock AMap 数据"
+        if self.force_mock:
+            return "USE_MOCK_AMAP 已启用"
         if not self.enabled:
             return "高德 API 未启用"
         if not self.api_key:
