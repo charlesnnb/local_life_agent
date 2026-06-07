@@ -115,5 +115,5 @@ Backend API documentation is available through FastAPI at `/docs`.
 ## 评审材料
 
 - 设计文档 PDF：`docs/设计文档.pdf`
-- Demo 视频：`docs/demo_video.*`
+- Demo 视频：[点击查看](https://drive.google.com/file/d/1ZqtGIUsDz3kzjgpTPfp_kLp4nMgCHNqk/view)
 - 文字版设计说明：[docs/design.md](docs/design.md)
