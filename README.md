@@ -112,6 +112,8 @@ npm run build
 
 Backend API documentation is available through FastAPI at `/docs`.
 
-## 设计文档
+## 评审材料
 
-系统架构、工具链、运行模式和异常处理设计见 [docs/design.md](docs/design.md)。
+- 设计文档 PDF：`docs/设计文档.pdf`
+- Demo 视频：`docs/demo_video.*`
+- 文字版设计说明：[docs/design.md](docs/design.md)
