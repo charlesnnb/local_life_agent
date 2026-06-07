@@ -2,7 +2,7 @@
 
 一句自然语言生成可执行的本地生活行程：理解需求、拆分任务、搜索地点、规划路线与时间线，并处理点餐、预约、消息和异常重规划。
 
-系统会把用户输入拆成有顺序的生活任务，调用 DeepSeek 和高德完成需求理解、地点搜索和路线规划，最终生成时间线、地图以及可执行动作。
+系统会把用户输入拆成有顺序的生活任务，调用 LLM 和高德完成需求理解、地点搜索和路线规划，最终生成时间线、地图以及可执行动作。README 中的 DeepSeek 配置只是一个示例，用户可以替换为自己的兼容模型服务。
 
 ## 核心功能
 
@@ -28,7 +28,7 @@ cd ..
 
 ### Hybrid Mode（推荐）
 
-Hybrid Mode 使用真实 DeepSeek、高德地点搜索、路线规划和地图；点餐、预约和消息发送使用 Mock。
+Hybrid Mode 使用真实 LLM、高德地点搜索、路线规划和地图；点餐、预约和消息发送使用 Mock。下面以 DeepSeek 作为 OpenAI-style LLM Provider 示例，用户可以按需替换为自己的模型服务。
 
 在 `.env` 和 `frontend/.env` 中填入 API Key（这两个文件已被 Git 忽略）：
 
@@ -55,7 +55,7 @@ VITE_AMAP_SECURITY_JS_CODE=your_code
 - Frontend: http://localhost:5173
 - Backend:  http://localhost:8000
 
-如果 DeepSeek 或高德请求失败，系统会自动使用规则或本地数据继续规划。
+如果 LLM 或高德请求失败，系统会自动使用规则或本地数据继续规划。
 
 ### 其他模式
 
